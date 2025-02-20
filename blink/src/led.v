@@ -13,32 +13,30 @@ module led(
 
 /********** Counter **********/
 // parameter Clock_frequency = 27_000_000; // Crystal oscillator frequency is 27MHz
-parameter count_value_05S = 13_499_999; // The number of clock cycles needed to time 0.5 seconds
-parameter count_value_01S = 2_699_999; // 26_699_999;
+parameter count_value_05S = 13_5_999;//13_499_999; // The number of clock cycles needed to time 0.5 seconds
+parameter count_value_01S = 2_699_999;//13_499_999; // 26_699_999;
 
 reg [23:0] count_value_reg; // Counter register (24 bits, large enough to store 13_499_999)
-reg        count_value_flag; // IO change flag
+//reg        count_value_flag; // IO change flag
 
 reg [23:0] count_value_reg2; // Counter register (24 bits, large enough to store 13_499_999)
-reg        count_value_flag2; // IO change flag
+//reg        count_value_flag2; // IO change flag
 /****************************************************************************************************/
 always @(posedge Clock) begin
-    if (count_value_reg <= count_value_05S) begin // Not yet counted to 0.5 seconds
-        count_value_reg <= count_value_reg + 1'b1; // Continue counting by 1
-        count_value_flag <= 1'b0; // Set count_value_flag bit to ZERO (0)
+    // Counter for 0.5 seconds
+    if (count_value_reg <= count_value_05S) begin
+        count_value_reg <= count_value_reg + 1; // Increment counter
     end
     else begin
-        count_value_reg <= 24'b0; // Clear counter, prepare for next counting cycle
-        count_value_flag <= 1'b1; // Set count_value_flag bit to ONE (1)
+        count_value_reg <= 24'b0; // Reset counter
     end
-/****************************************************************************************************/
-    if (count_value_reg2 <= count_value_01S) begin // has count_value_reg2 reached count_value_01S?
-        count_value_reg2 <= count_value_reg2 + 1'b1; // Continue counting by 1
-        count_value_flag2 <= 1'b0; //  // Set count_value_flag2 bit to ZERO (0)
+
+    // Counter for 0.1 seconds
+    if (count_value_reg2 <= count_value_01S) begin
+        count_value_reg2 <= count_value_reg2 + 1; // Increment counter
     end
     else begin
-        count_value_reg2 <= 24'b0; // Clear counter, prepare for next counting cycle
-        count_value_flag2 <= 1'b1; // Set count_value_flag2 bit to ONE (1)
+        count_value_reg2 <= 24'b0; // Reset counter
     end
 end
 
@@ -48,15 +46,17 @@ reg IO_voltage_reg2 = 1'b0; // Initial state
 
 always @(posedge Clock) begin
 /****************************************************************************************************/
-    if ( count_value_flag )  //  Flip flag 
-        IO_voltage_reg <= ~IO_voltage_reg; // IO voltage flip
-    else
-        IO_voltage_reg <= IO_voltage_reg; // IO voltage constant
+    IO_voltage_reg <= IO_voltage_reg ^(count_value_reg == 0);
+    //if ( count_value_reg == 0)  //  Flip flag 
+        //IO_voltage_reg <= ~IO_voltage_reg; // IO voltage flip
+//    else
+ //       IO_voltage_reg <= IO_voltage_reg; // IO voltage constant
 /****************************************************************************************************/
-    if ( count_value_flag2 )  //  Flip flag 
-        IO_voltage_reg2 <= ~IO_voltage_reg2; // IO voltage flip
-    else
-        IO_voltage_reg2 <= IO_voltage_reg2; // IO voltage constant
+      IO_voltage_reg2 <= IO_voltage_reg2 ^(count_value_reg2 == 0);
+    //if ( count_value_reg2 == 0 )  //  Flip flag 
+        //IO_voltage_reg2 <= ~IO_voltage_reg2; // IO voltage flip
+    //else
+        //IO_voltage_reg2 <= IO_voltage_reg2; // IO voltage constant
 /****************************************************************************************************/
 end
 
