@@ -3,6 +3,7 @@
 -pn GW2AR-LV18QN88C8/I7
 -cst C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\blink.cst
 -cfg C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\device.cfg
+-sdc C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\blink.sdc
 -bit
 -tr
 -ph
