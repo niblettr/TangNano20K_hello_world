@@ -1,0 +1,7 @@
+Reading netlist file: "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\gwsynthesis\blink.vg"
+Parsing netlist file "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\gwsynthesis\blink.vg" completed
+Processing netlist completed
+Reading constraint file: "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\blink.cst"
+ERROR  (CT1136) : Bank 6 vccio(3.3) is locked by other constraint or embedded port, conflicting BANK_VCCIO set by 'IO_voltage_obuf' : IO_TYPE = LVCMOS18 in the same bank
+ERROR  (CT1136) : Bank 7 vccio(3.3) is locked by other constraint or embedded port, conflicting BANK_VCCIO set by 'Clock_ibuf' : IO_TYPE = LVCMOS18 in the same bank
+Physical Constraint parsed completed with errors

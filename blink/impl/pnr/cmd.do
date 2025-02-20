@@ -1,0 +1,14 @@
+-d C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\gwsynthesis\blink.vg
+-p GW2AR-18C-QFN88-8
+-pn GW2AR-LV18QN88C8/I7
+-cst C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\blink.cst
+-cfg C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\device.cfg
+-bit
+-tr
+-ph
+-timing
+-cst_error
+-convert_sdp32_36_to_sdp16_18
+-correct_hold 1
+-route_maxfan 23
+-global_freq 100.000
