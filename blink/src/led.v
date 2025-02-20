@@ -21,7 +21,7 @@ reg        count_value_flag; // IO change flag
 
 reg [23:0] count_value_reg2; // Counter register (24 bits, large enough to store 13_499_999)
 reg        count_value_flag2; // IO change flag
-
+/****************************************************************************************************/
 always @(posedge Clock) begin
     if (count_value_reg <= count_value_05S) begin // Not yet counted to 0.5 seconds
         count_value_reg <= count_value_reg + 1'b1; // Continue counting
@@ -47,15 +47,17 @@ reg IO_voltage_reg = 1'b0; // Initial state
 reg IO_voltage_reg2 = 1'b0; // Initial state
 
 always @(posedge Clock) begin
+/****************************************************************************************************/
     if ( count_value_flag )  //  Flip flag 
         IO_voltage_reg <= ~IO_voltage_reg; // IO voltage flip
     else //  No flip flag
         IO_voltage_reg <= IO_voltage_reg; // IO voltage constant
-
+/****************************************************************************************************/
     if ( count_value_flag2 )  //  Flip flag 
         IO_voltage_reg2 <= ~IO_voltage_reg2; // IO voltage flip
     else //  No flip flag
         IO_voltage_reg2 <= IO_voltage_reg2; // IO voltage constant
+/****************************************************************************************************/
 end
 
 /***** Add an extra line of code *****/ // niblett this was original comment that makes no sense....
