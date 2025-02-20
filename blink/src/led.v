@@ -24,21 +24,21 @@ reg        count_value_flag2; // IO change flag
 /****************************************************************************************************/
 always @(posedge Clock) begin
     if (count_value_reg <= count_value_05S) begin // Not yet counted to 0.5 seconds
-        count_value_reg <= count_value_reg + 1'b1; // Continue counting
-        count_value_flag <= 1'b0; // No flip flag
+        count_value_reg <= count_value_reg + 1'b1; // Continue counting by 1
+        count_value_flag <= 1'b0; // Set count_value_flag bit to ZERO (0)
     end
-    else begin // Counted to 0.5 seconds
+    else begin
         count_value_reg <= 24'b0; // Clear counter, prepare for next counting cycle
-        count_value_flag <= 1'b1; // Set flip flag
+        count_value_flag <= 1'b1; // Set count_value_flag bit to ONE (1)
     end
 /****************************************************************************************************/
-    if (count_value_reg2 <= count_value_01S) begin // Not yet counted to 0.5 seconds
-        count_value_reg2 <= count_value_reg2 + 1'b1; // Continue counting
-        count_value_flag2 <= 1'b0; // No flip flag
+    if (count_value_reg2 <= count_value_01S) begin // has count_value_reg2 reached count_value_01S?
+        count_value_reg2 <= count_value_reg2 + 1'b1; // Continue counting by 1
+        count_value_flag2 <= 1'b0; //  // Set count_value_flag2 bit to ZERO (0)
     end
-    else begin // Counted to 0.5 seconds
+    else begin
         count_value_reg2 <= 24'b0; // Clear counter, prepare for next counting cycle
-        count_value_flag2 <= 1'b1; // Set flip flag
+        count_value_flag2 <= 1'b1; // Set count_value_flag2 bit to ONE (1)
     end
 end
 
@@ -50,17 +50,16 @@ always @(posedge Clock) begin
 /****************************************************************************************************/
     if ( count_value_flag )  //  Flip flag 
         IO_voltage_reg <= ~IO_voltage_reg; // IO voltage flip
-    else //  No flip flag
+    else
         IO_voltage_reg <= IO_voltage_reg; // IO voltage constant
 /****************************************************************************************************/
     if ( count_value_flag2 )  //  Flip flag 
         IO_voltage_reg2 <= ~IO_voltage_reg2; // IO voltage flip
-    else //  No flip flag
+    else
         IO_voltage_reg2 <= IO_voltage_reg2; // IO voltage constant
 /****************************************************************************************************/
 end
 
-/***** Add an extra line of code *****/ // niblett this was original comment that makes no sense....
 /* Continuous Assignment: continuously drives the value of IO_voltage with the value of IO_voltage_reg*/
 assign IO_voltage = IO_voltage_reg;
 assign IO_voltage2 = IO_voltage_reg2;
