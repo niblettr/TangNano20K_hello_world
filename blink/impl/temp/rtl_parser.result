@@ -1,10 +1,10 @@
 [
  {
   "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
-  "InstLine" : 8,
+  "InstLine" : 9,
   "InstName" : "led",
   "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
-  "ModuleLine" : 8,
+  "ModuleLine" : 9,
   "ModuleName" : "led"
  }
 ]
