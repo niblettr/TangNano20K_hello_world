@@ -1,7 +1,7 @@
 GowinSynthesis start
 Running parser ...
 Analyzing Verilog file 'C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v'
-Compiling module 'led'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":9)
+Compiling module 'led'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":11)
 WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":40)
 WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":48)
 NOTE  (EX0101) : Current top module is "led"
