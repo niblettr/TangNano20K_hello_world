@@ -15,20 +15,25 @@ module led(
     output IO_voltage3
 );
 
-    /********** Constants which do NOT WORK!!!!!!!!**********/
+    /********** Constants **********/
     parameter  CLOCK_FREQUENCY = 27000000;  // Crystal oscillator frequency is 27MHz
+    parameter  HALF_PERIOD_1   = 500;
+    parameter  HALF_PERIOD_2   = 100;
 
-    parameter  integer  COUNT_05S = ( ( 27000000 * 500) / 1_000 ) - 1; // 13_499_999 count = 500ms DOES NOT WORK!!!
-    parameter  integer  COUNT_01S = ( ( 27000000 * 100) / 1_000 ) - 1; // 2_699_999 count = 100ms  DOES NOT WORK!!!
+    //parameter  integer  COUNT_05S = ( ( CLOCK_FREQUENCY * 500) / 1_000 ) - 1;
+    //parameter  integer  COUNT_01S = ( ( CLOCK_FREQUENCY * 100) / 1_000 ) - 1;
+
+    parameter  integer  COUNT_05S = ( ( CLOCK_FREQUENCY * HALF_PERIOD_1) / 1000 ) - 1;
+    parameter  integer  COUNT_01S = ( ( CLOCK_FREQUENCY * HALF_PERIOD_2) / 1000 ) - 1;
 
 
     /********** Counters **********/
 
-    parameter count_value_05S = 13499999;  // The number of clock cycles needed to time 0.5 seconds 13_499_999
-    parameter count_value_01S = 2699999;  // The number of clock cycles needed to time 0.1 seconds 2_699_999
+    //parameter count_value_05S = 13499999;  // The number of clock cycles needed to time 0.5 seconds 13_499_999
+    //parameter count_value_01S = 2699999;  // The number of clock cycles needed to time 0.1 seconds 2_699_999
 
-    //parameter count_value_05S = COUNT_05S;  // The number of clock cycles needed to time 0.5 seconds DOES NOT WORK!!!
-    //parameter count_value_01S = COUNT_01S;  // The number of clock cycles needed to time 0.1 seconds DOES NOT WORK!!!
+    parameter count_value_05S = COUNT_05S;  // The number of clock cycles needed to time 0.5 seconds
+    parameter count_value_01S = COUNT_01S;  // The number of clock cycles needed to time 0.1 seconds
 
     reg [23:0] count_value_reg  = 0; // Counter register (24 bits)
     reg [23:0] count_value_reg2 = 0; // Counter register (24 bits)

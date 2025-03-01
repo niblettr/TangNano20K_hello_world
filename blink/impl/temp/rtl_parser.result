@@ -1,9 +1,9 @@
 [
  {
-  "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+  "InstFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
   "InstLine" : 11,
   "InstName" : "led",
-  "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+  "ModuleFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
   "ModuleLine" : 11,
   "ModuleName" : "led"
  }
