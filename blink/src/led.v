@@ -17,7 +17,7 @@ module led(
 
     /********** Constants **********/
     parameter  CLOCK_FREQUENCY = 27000000;  // Crystal oscillator frequency is 27MHz
-    parameter  HALF_PERIOD_1   = 500;
+    parameter  HALF_PERIOD_1   = 100;
     parameter  HALF_PERIOD_2   = 100;
 
     //parameter  integer  COUNT_05S = ( ( CLOCK_FREQUENCY * 500) / 1_000 ) - 1;
