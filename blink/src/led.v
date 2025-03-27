@@ -1,26 +1,26 @@
 module led( 
     input  Clock,
-    output Led_0,   //Pin15
-    output Led_1,   //Pin16
-    output Led_2,   //Pin17
-    output Led_3,   //Pin18
-    output Led_4,   //Pin19
-    output Led_5,   //Pin20
-    output Uart_TX, //Pin49
-    input  Uart_RX  //Pin55
+    output Led_0,   // Pin15
+    output Led_1,   // Pin16
+    output Led_2,   // Pin17
+    output Led_3,   // Pin18
+    output Led_4,   // Pin19
+    output Led_5,   // Pin20
+    output Uart_TX, // Pin49
+    input  Uart_RX  // Pin55
 );
 
     /********** UART String **********/
     reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10};
-    reg [3:0] uart_string_index = 0;       // Index for string transmission    
+    reg [3:0] uart_string_index = 0; // Index for string transmission    
 
     /********** Constants **********/
-    parameter  CLOCK_FREQUENCY = 27000000;  // Crystal oscillator frequency is 27MHz
+    parameter  CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
     parameter  HALF_PERIOD     = 100;       // Adjust for desired speed
-    parameter  integer  COUNT_DELAY = ( ( CLOCK_FREQUENCY / 1000) * HALF_PERIOD ) - 1;
+    parameter  integer COUNT_DELAY = ((CLOCK_FREQUENCY / 1000) * HALF_PERIOD) - 1;
     parameter  BAUD_RATE = 115200;
     parameter  BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
-    parameter  UART_DELAY = CLOCK_FREQUENCY/100; // 1-second delay for UART transmission
+    parameter  UART_DELAY = CLOCK_FREQUENCY / 100; // 1-second delay for UART transmission
 
     /********** Counters **********/
     reg [23:0] count_value_reg = 0; // Counter register (24 bits)
@@ -33,6 +33,7 @@ module led(
     /********** UART Transmission **********/
     reg [7:0] uart_data = 8'b0;     // Data to transmit
     reg uart_start = 1'b0;          // Start signal for UART
+    wire uart_ready;                // Indicates if FIFO can accept more data
 
     uart_tx #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -41,11 +42,12 @@ module led(
         .clk(Clock),
         .start(uart_start),
         .data(uart_data),
-        .tx(Uart_TX)
+        .tx(Uart_TX),
+        .ready(uart_ready)
     );
 
     /****************************************************************************************************/
-    //LED handling
+    // LED handling
     always @(posedge Clock) begin
         // Counter for delay
         if (count_value_reg < COUNT_DELAY) begin
@@ -72,22 +74,20 @@ module led(
                 end
             end
         end
-
-
     end
-    /****************************************************************************************************/
-    // UART transmission logic
-    always @(posedge Clock) begin
 
+    /****************************************************************************************************/
+    // UART transmission logic using FIFO
+    always @(posedge Clock) begin
         if (uart_counter < UART_DELAY) begin
             uart_counter <= uart_counter + 1; // Increment UART delay counter
-            uart_start <= 1'b0; // Ensure UART is not triggered
+            uart_start <= 1'b0; // Ensure start is low unless sending data
         end
-        else begin
+        else if (uart_ready && !uart_start) begin
             uart_counter <= 0; // Reset UART delay counter
             uart_data <= uart_string[uart_string_index]; // Load the current character
             uart_start <= 1'b1; // Trigger UART transmission
-
+            
             // Move to the next character
             if (uart_string_index < 5) begin
                 uart_string_index <= uart_string_index + 1;
@@ -96,8 +96,10 @@ module led(
                 uart_string_index <= 0; // Reset index after the last character
             end
         end
+        else begin
+            uart_start <= 1'b0; // Ensure `start` is deasserted after one cycle
+        end
     end
-
 
     /********** Continuous Assignments **********/
     assign Led_0 = !led_state[0];

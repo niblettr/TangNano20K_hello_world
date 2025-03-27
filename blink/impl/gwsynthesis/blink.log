@@ -5,9 +5,12 @@ Analyzing Verilog file 'C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_
 Compiling module 'led'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":1)
 Extracting RAM for identifier 'uart_string'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":14)
 Compiling module 'uart_tx'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":1)
-WARN  (EX3791) : Expression size 17 truncated to fit in target size 16("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":31)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":37)
-WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":52)
+Extracting RAM for identifier 'fifo'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":19)
+WARN  (EX3791) : Expression size 6 truncated to fit in target size 5("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":35)
+WARN  (EX3791) : Expression size 32 truncated to fit in target size 5("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":46)
+WARN  (EX3791) : Expression size 17 truncated to fit in target size 16("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":52)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":57)
+WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":54)
 WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":93)
 NOTE  (EX0101) : Current top module is "led"
 [5%] Running netlist conversion ...
