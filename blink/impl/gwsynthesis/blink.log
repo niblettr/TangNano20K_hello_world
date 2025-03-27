@@ -7,8 +7,8 @@ Extracting RAM for identifier 'uart_string'("C:\YunexDev\TangNano\Tang20K_Hello_
 Compiling module 'uart_tx'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":1)
 WARN  (EX3791) : Expression size 17 truncated to fit in target size 16("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":31)
 WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v":37)
-WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":60)
-WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":96)
+WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":52)
+WARN  (EX3791) : Expression size 5 truncated to fit in target size 4("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":93)
 NOTE  (EX0101) : Current top module is "led"
 [5%] Running netlist conversion ...
 WARN  (CV0016) : Input Uart_RX is unused("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":10)

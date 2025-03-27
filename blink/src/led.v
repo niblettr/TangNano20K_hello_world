@@ -11,17 +11,8 @@ module led(
 );
 
     /********** UART String **********/
-    reg [7:0] uart_string [0:5];    // Array to hold the string "Test\r\n"
-    reg [3:0] uart_index = 0;       // Index for string transmission
-
-    initial begin
-        uart_string[0] = "T";
-        uart_string[1] = "e";
-        uart_string[2] = "s";
-        uart_string[3] = "t";
-        uart_string[4] = "\r";
-        uart_string[5] = "\n";
-    end
+    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10};
+    reg [3:0] uart_string_index = 0;       // Index for string transmission    
 
     /********** Constants **********/
     parameter  CLOCK_FREQUENCY = 27000000;  // Crystal oscillator frequency is 27MHz
@@ -29,7 +20,7 @@ module led(
     parameter  integer  COUNT_DELAY = ( ( CLOCK_FREQUENCY / 1000) * HALF_PERIOD ) - 1;
     parameter  BAUD_RATE = 115200;
     parameter  BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
-    parameter  UART_DELAY = CLOCK_FREQUENCY; // 1-second delay for UART transmission
+    parameter  UART_DELAY = CLOCK_FREQUENCY/100; // 1-second delay for UART transmission
 
     /********** Counters **********/
     reg [23:0] count_value_reg = 0; // Counter register (24 bits)
@@ -54,6 +45,7 @@ module led(
     );
 
     /****************************************************************************************************/
+    //LED handling
     always @(posedge Clock) begin
         // Counter for delay
         if (count_value_reg < COUNT_DELAY) begin
@@ -81,25 +73,31 @@ module led(
             end
         end
 
-        // UART transmission logic
+
+    end
+    /****************************************************************************************************/
+    // UART transmission logic
+    always @(posedge Clock) begin
+
         if (uart_counter < UART_DELAY) begin
             uart_counter <= uart_counter + 1; // Increment UART delay counter
             uart_start <= 1'b0; // Ensure UART is not triggered
         end
         else begin
             uart_counter <= 0; // Reset UART delay counter
-            uart_data <= uart_string[uart_index]; // Load the current character
+            uart_data <= uart_string[uart_string_index]; // Load the current character
             uart_start <= 1'b1; // Trigger UART transmission
 
             // Move to the next character
-            if (uart_index < 5) begin
-                uart_index <= uart_index + 1;
+            if (uart_string_index < 5) begin
+                uart_string_index <= uart_string_index + 1;
             end
             else begin
-                uart_index <= 0; // Reset index after the last character
+                uart_string_index <= 0; // Reset index after the last character
             end
         end
     end
+
 
     /********** Continuous Assignments **********/
     assign Led_0 = !led_state[0];
