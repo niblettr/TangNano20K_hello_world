@@ -14,6 +14,11 @@ module uart_tx #(
     reg [9:0] shift_reg = 10'b1111111111;
     reg transmitting = 1'b0;
 
+    // Initialize tx to idle state (high)
+    initial begin
+        tx = 1'b1;
+    end
+
     always @(posedge clk) begin
         if (start && !transmitting) begin
             transmitting <= 1'b1;
@@ -27,7 +32,7 @@ module uart_tx #(
             end
             else begin
                 baud_counter <= 0;
-                tx <= shift_reg[0];
+                tx <= shift_reg[0]; // Transmit the current bit
                 shift_reg <= {1'b1, shift_reg[9:1]};
                 bit_index <= bit_index + 1;
 
@@ -35,6 +40,10 @@ module uart_tx #(
                     transmitting <= 1'b0;
                 end
             end
+        end
+        else begin
+            // Ensure tx is high (idle) when not transmitting
+            tx <= 1'b1;
         end
     end
 endmodule

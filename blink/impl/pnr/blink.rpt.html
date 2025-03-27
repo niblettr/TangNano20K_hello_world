@@ -83,7 +83,7 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 </tr>
 <tr>
 <td class="label">Created Time</td>
-<td>Thu Mar 27 09:11:09 2025
+<td>Thu Mar 27 10:11:58 2025
 </td>
 </tr>
 <tr>
@@ -97,24 +97,24 @@ table.detail_table th.label {  min-width: 8%; width: 8%; }
 <tr>
 <td class="label">Place & Route Process</td>
 <td>Running placement:
-   Placement Phase 0: CPU time = 0h 0m 0.005s, Elapsed time = 0h 0m 0.005s
-   Placement Phase 1: CPU time = 0h 0m 0.193s, Elapsed time = 0h 0m 0.193s
-   Placement Phase 2: CPU time = 0h 0m 0.002s, Elapsed time = 0h 0m 0.001s
-   Placement Phase 3: CPU time = 0h 0m 0.587s, Elapsed time = 0h 0m 0.587s
-   Total Placement: CPU time = 0h 0m 0.787s, Elapsed time = 0h 0m 0.786s
+   Placement Phase 0: CPU time = 0h 0m 0.007s, Elapsed time = 0h 0m 0.007s
+   Placement Phase 1: CPU time = 0h 0m 0.214s, Elapsed time = 0h 0m 0.214s
+   Placement Phase 2: CPU time = 0h 0m 0.006s, Elapsed time = 0h 0m 0.007s
+   Placement Phase 3: CPU time = 0h 0m 0.643s, Elapsed time = 0h 0m 0.643s
+   Total Placement: CPU time = 0h 0m 0.87s, Elapsed time = 0h 0m 0.871s
 Running routing:
-   Routing Phase 0: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
-   Routing Phase 1: CPU time = 0h 0m 0.104s, Elapsed time = 0h 0m 0.103s
-   Routing Phase 2: CPU time = 0h 0m 0.108s, Elapsed time = 0h 0m 0.109s
+   Routing Phase 0: CPU time = 0h 0m 0.001s, Elapsed time = 0h 0m 0s
+   Routing Phase 1: CPU time = 0h 0m 0.124s, Elapsed time = 0h 0m 0.124s
+   Routing Phase 2: CPU time = 0h 0m 0.14s, Elapsed time = 0h 0m 0.14s
    Routing Phase 3: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
-   Total Routing: CPU time = 0h 0m 0.212s, Elapsed time = 0h 0m 0.212s
+   Total Routing: CPU time = 0h 0m 0.265s, Elapsed time = 0h 0m 0.264s
 Generate output files:
    CPU time = 0h 0m 1s, Elapsed time = 0h 0m 1s
 </td>
 </tr>
 <tr>
 <td class="label">Total Time and Memory Usage</td>
-<td>CPU time = 0h 0m 2s, Elapsed time = 0h 0m 2s, Peak memory usage = 417MB</td>
+<td>CPU time = 0h 0m 2s, Elapsed time = 0h 0m 2s, Peak memory usage = 482MB</td>
 </tr>
 </table>
 <br/>
@@ -129,12 +129,12 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">Logic</td>
-<td>94/20736</td>
+<td>150/20736</td>
 <td><1%</td>
 </tr>
 <tr>
 <td class="label">&nbsp &nbsp --LUT,ALU,ROM16</td>
-<td>94(54 LUT, 40 ALU, 0 ROM16)</td>
+<td>150(78 LUT, 72 ALU, 0 ROM16)</td>
 <td>-</td>
 </tr>
 <tr>
@@ -144,7 +144,7 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">Register</td>
-<td>63/15750</td>
+<td>106/15750</td>
 <td><1%</td>
 </tr>
 <tr>
@@ -154,7 +154,7 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">&nbsp &nbsp --Logic Register as FF</td>
-<td>62/15552</td>
+<td>105/15552</td>
 <td><1%</td>
 </tr>
 <tr>
@@ -169,7 +169,7 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">CLS</td>
-<td>57/10368</td>
+<td>87/10368</td>
 <td><1%</td>
 </tr>
 <tr>
@@ -425,10 +425,10 @@ Generate output files:
 <tr>
 <td class="label">Uart_TX</td>
 <td>-</td>
-<td>49/3</td>
+<td>55/3</td>
 <td>Y</td>
 <td>out</td>
-<td>IOR49[A]</td>
+<td>IOR36[B]</td>
 <td>LVCMOS33</td>
 <td>8</td>
 <td>UP</td>
@@ -1406,17 +1406,17 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">55/3</td>
-<td>-</td>
-<td>in</td>
+<td>Uart_TX</td>
+<td>out</td>
 <td>IOR36[B]</td>
-<td>LVCMOS18</td>
-<td>NA</td>
+<td>LVCMOS33</td>
+<td>8</td>
 <td>UP</td>
-<td>ON</td>
-<td>NONE</td>
 <td>NA</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
+<td>OFF</td>
 <td>NA</td>
 <td>3.3</td>
 </tr>
@@ -1486,17 +1486,17 @@ Generate output files:
 </tr>
 <tr>
 <td class="label">49/3</td>
-<td>Uart_TX</td>
-<td>out</td>
+<td>-</td>
+<td>in</td>
 <td>IOR49[A]</td>
-<td>LVCMOS33</td>
-<td>8</td>
+<td>LVCMOS18</td>
+<td>NA</td>
 <td>UP</td>
+<td>ON</td>
+<td>NONE</td>
 <td>NA</td>
 <td>NA</td>
-<td>OFF</td>
 <td>NA</td>
-<td>OFF</td>
 <td>NA</td>
 <td>3.3</td>
 </tr>

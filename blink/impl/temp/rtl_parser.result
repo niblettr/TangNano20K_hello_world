@@ -9,7 +9,7 @@
   "SubInsts" : [
    {
     "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
-    "InstLine" : 34,
+    "InstLine" : 49,
     "InstName" : "uart_inst",
     "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/uart_tx.v",
     "ModuleLine" : 1,

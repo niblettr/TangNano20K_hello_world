@@ -12,27 +12,27 @@
   <Part Number>: GW2AR-LV18QN88C8/I7
   <Device>: GW2AR-18
   <Device Version>: C
-  <Created Time>:Thu Mar 27 09:11:09 2025
+  <Created Time>:Thu Mar 27 10:11:58 2025
 
 
 2. PnR Details
 
   Running placement:
-    Placement Phase 0: CPU time = 0h 0m 0.005s, Elapsed time = 0h 0m 0.005s
-    Placement Phase 1: CPU time = 0h 0m 0.193s, Elapsed time = 0h 0m 0.193s
-    Placement Phase 2: CPU time = 0h 0m 0.002s, Elapsed time = 0h 0m 0.001s
-    Placement Phase 3: CPU time = 0h 0m 0.587s, Elapsed time = 0h 0m 0.587s
-    Total Placement: CPU time = 0h 0m 0.787s, Elapsed time = 0h 0m 0.786s
+    Placement Phase 0: CPU time = 0h 0m 0.007s, Elapsed time = 0h 0m 0.007s
+    Placement Phase 1: CPU time = 0h 0m 0.214s, Elapsed time = 0h 0m 0.214s
+    Placement Phase 2: CPU time = 0h 0m 0.006s, Elapsed time = 0h 0m 0.007s
+    Placement Phase 3: CPU time = 0h 0m 0.643s, Elapsed time = 0h 0m 0.643s
+    Total Placement: CPU time = 0h 0m 0.87s, Elapsed time = 0h 0m 0.871s
  Running routing:
-    Routing Phase 0: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
-    Routing Phase 1: CPU time = 0h 0m 0.104s, Elapsed time = 0h 0m 0.103s
-    Routing Phase 2: CPU time = 0h 0m 0.108s, Elapsed time = 0h 0m 0.109s
+    Routing Phase 0: CPU time = 0h 0m 0.001s, Elapsed time = 0h 0m 0s
+    Routing Phase 1: CPU time = 0h 0m 0.124s, Elapsed time = 0h 0m 0.124s
+    Routing Phase 2: CPU time = 0h 0m 0.14s, Elapsed time = 0h 0m 0.14s
     Routing Phase 3: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
-    Total Routing: CPU time = 0h 0m 0.212s, Elapsed time = 0h 0m 0.212s
+    Total Routing: CPU time = 0h 0m 0.265s, Elapsed time = 0h 0m 0.264s
  Generate output files:
     CPU time = 0h 0m 1s, Elapsed time = 0h 0m 1s
 
- Total Time and Memory Usage: CPU time = 0h 0m 2s, Elapsed time = 0h 0m 2s, Peak memory usage = 417MB
+ Total Time and Memory Usage: CPU time = 0h 0m 2s, Elapsed time = 0h 0m 2s, Peak memory usage = 482MB
 
 
 3. Resource Usage Summary
@@ -40,15 +40,15 @@
   --------------------------------------------------------------------------------
   Resources                   | Usage                               | Utilization
   --------------------------------------------------------------------------------
-  Logic                       | 94/20736                            |  <1%
-    --LUT,ALU,ROM16           | 94(54 LUT, 40 ALU, 0 ROM16)         | -
+  Logic                       | 150/20736                           |  <1%
+    --LUT,ALU,ROM16           | 150(78 LUT, 72 ALU, 0 ROM16)        | -
     --SSRAM(RAM16)            | 0                                   | -
-  Register                    | 63/15750                            |  <1%
+  Register                    | 106/15750                           |  <1%
     --Logic Register as Latch | 0/15552                             |  0%
-    --Logic Register as FF    | 62/15552                            |  <1%
+    --Logic Register as FF    | 105/15552                           |  <1%
     --I/O Register as Latch   | 0/198                               |  0%
     --I/O Register as FF      | 1/198                               |  <1%
-  CLS                         | 57/10368                            |  <1%
+  CLS                         | 87/10368                            |  <1%
   I/O Port                    | 9/66                                |  14%
   I/O Buf                     | 8                                   | -
     --Input Buf               | 1                                   | -
@@ -106,7 +106,7 @@ Led_2      | -         | 17/6          | Y          | out   | IOL49[A] | LVCMOS3
 Led_3      | -         | 18/6          | Y          | out   | IOL49[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
 Led_4      | -         | 19/6          | Y          | out   | IOL51[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
 Led_5      | -         | 20/6          | Y          | out   | IOL51[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Uart_TX    | -         | 49/3          | Y          | out   | IOR49[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+Uart_TX    | -         | 55/3          | Y          | out   | IOR36[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
 ==================================================================================================================================================================================================================
 
 
@@ -179,12 +179,12 @@ Loc./Bank| Signal   | Dir.  | Site     | IO Type  | Drive | Pull Mode | PCI Clam
 59/3     | -        | in    | IOR34[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 57/3     | -        | in    | IOR35[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 56/3     | -        | in    | IOR36[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
-55/3     | -        | in    | IOR36[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
+55/3     | Uart_TX  | out   | IOR36[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
 54/3     | -        | in    | IOR38[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 53/3     | -        | in    | IOR38[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 52/3     | -        | in    | IOR39[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 51/3     | -        | in    | IOR45[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
-49/3     | Uart_TX  | out   | IOR49[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+49/3     | -        | in    | IOR49[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 48/3     | -        | in    | IOR49[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 =====================================================================================================================================================================================
