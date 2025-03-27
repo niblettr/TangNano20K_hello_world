@@ -13,7 +13,7 @@ Running routing......
 [60%] Routing Phase 0 completed
 [70%] Routing Phase 1 completed
 [80%] Routing Phase 2 completed
-WARN  (PR1014) : Generic routing resource will be used to clock signal 'IO_voltage3_d' by the specified constraint. And then it may lead to the excessive delay or skew
+WARN  (PR1014) : Generic routing resource will be used to clock signal 'Clock_d' by the specified constraint. And then it may lead to the excessive delay or skew
 [90%] Routing Phase 3 completed
 Running timing analysis......
 [95%] Timing analysis completed
@@ -27,5 +27,5 @@ Generate file "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\blink.pin
 Generate file "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\blink.rpt.html" completed
 Generate file "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\blink.rpt.txt" completed
 Generate file "C:\YunexDev\TangNano\Tang20K_Hello_world\blink\impl\pnr\blink.tr.html" completed
-Thu Mar 27 07:35:15 2025
+Thu Mar 27 08:45:19 2025
 

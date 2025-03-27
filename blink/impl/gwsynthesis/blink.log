@@ -2,9 +2,13 @@ GowinSynthesis start
 Running parser ...
 Analyzing Verilog file 'C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v'
 Compiling module 'led'("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":11)
-WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":35)
-WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":43)
+WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":38)
+WARN  (EX3791) : Expression size 25 truncated to fit in target size 24("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":46)
 NOTE  (EX0101) : Current top module is "led"
+WARN  (EX0211) : The output port "Led_1" of module "led" has no driver, assigning undriven bits to Z, simulation mismatch possible("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":14)
+WARN  (EX0211) : The output port "Led_2" of module "led" has no driver, assigning undriven bits to Z, simulation mismatch possible("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":15)
+WARN  (EX0211) : The output port "Led_3" of module "led" has no driver, assigning undriven bits to Z, simulation mismatch possible("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":16)
+WARN  (EX0211) : The output port "Led_4" of module "led" has no driver, assigning undriven bits to Z, simulation mismatch possible("C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v":17)
 [5%] Running netlist conversion ...
 Running device independent optimization ...
 [10%] Optimizing Phase 0 completed

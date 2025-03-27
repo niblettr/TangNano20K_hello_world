@@ -2,17 +2,20 @@
 Module Declaration:
 module led: Declares a module named led.
 input Clock: Declares an input port named Clock.
-output IO_voltage: Declares an output port named IO_voltage.
-This module is designed to control the output voltage (IO_voltage) based on the input clock signal (Clock).
+output Led_0: Declares an output port named Led_0.
+This module is designed to control the output voltage (Led_0) based on the input clock signal (Clock).
 */
 
 // NOTE the use of Non-Blocking Assignment (<=), so that eveything udated in parallel.
 
 module led( 
     input  Clock,
-    output IO_voltage,
-    output IO_voltage2,
-    output IO_voltage3
+    output Led_0, //Pin15
+    output Led_1, //Pin16
+    output Led_2, //Pin17
+    output Led_3, //Pin18
+    output Led_4, //Pin19
+    output Led_5  //Pin20
 );
 
     /********** Constants **********/
@@ -48,24 +51,19 @@ module led(
     end
 
     /********** IO voltage flip **********/
-    reg IO_voltage_reg  = 1'b0; // Initial state
-    reg IO_voltage_reg2 = 1'b0; // Initial state
+    reg Led_0_Reg = 1'b0; // Initial state
+    reg Led_5_Reg = 1'b0; // Initial state
 
     /****************************************************************************************************/
        
     always @(posedge Clock) begin
-        IO_voltage_reg  <= (count_value_reg  == 0) ? ~IO_voltage_reg  : IO_voltage_reg;
-        IO_voltage_reg2 <= (count_value_reg2 == 0) ? ~IO_voltage_reg2 : IO_voltage_reg2;
-        //IO_voltage_reg  <= IO_voltage_reg  ^ (count_value_reg  == 0);  // results in 2ns skew DON'T TRY TO BE CLEVER
-        //IO_voltage_reg2 <= IO_voltage_reg2 ^ (count_value_reg2 == 0);  // results in 2ns skew DON'T TRY TO BE CLEVER
-      
+        Led_0_Reg  <= (count_value_reg  == 0) ? ~Led_0_Reg  : Led_0_Reg;
+        Led_5_Reg <= (count_value_reg2 == 0) ? ~Led_5_Reg : Led_5_Reg;
     end
 
     /* Continuous Assignments: links shit to the outside world, i.e. pins */
-    assign IO_voltage  = IO_voltage_reg;
-    assign IO_voltage2 = IO_voltage_reg2;
-
-    assign IO_voltage3 = Clock;  // Toggle on every clock cycle (27MHZ)
+    assign Led_0 = Led_0_Reg;
+    assign Led_5 = Led_5_Reg;
 
 endmodule
 
