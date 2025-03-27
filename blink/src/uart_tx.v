@@ -41,9 +41,5 @@ module uart_tx #(
                 end
             end
         end
-        else begin
-            // Ensure tx is high (idle) when not transmitting
-            tx <= 1'b1;
-        end
     end
 endmodule
