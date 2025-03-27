@@ -5,6 +5,16 @@
   "InstName" : "led",
   "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
   "ModuleLine" : 1,
-  "ModuleName" : "led"
+  "ModuleName" : "led",
+  "SubInsts" : [
+   {
+    "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+    "InstLine" : 34,
+    "InstName" : "uart_inst",
+    "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/uart_tx.v",
+    "ModuleLine" : 1,
+    "ModuleName" : "uart_tx"
+   }
+  ]
  }
 ]

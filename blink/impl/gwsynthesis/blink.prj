@@ -5,6 +5,7 @@
     <Device id="GW2AR-18C" package="QFN88" speed="8" partNumber="GW2AR-LV18QN88C8/I7"/>
     <FileList>
         <File path="C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\led.v" type="verilog"/>
+        <File path="C:\YunexDev\TangNano\Tang20K_Hello_world\blink\src\uart_tx.v" type="verilog"/>
     </FileList>
     <OptionList>
         <Option type="disable_insert_pad" value="0"/>

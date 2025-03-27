@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Module name="led" Register="31" Alu="23" Lut="29" T_Register="31(31)" T_Alu="23(23)" T_Lut="29(29)"/>
+<Module name="led" Register="32" Alu="23" Lut="30" T_Register="63(32)" T_Alu="38(23)" T_Lut="54(30)">
+ <SubModule name="uart_inst" Register="31" Alu="15" Lut="24" T_Register="31(31)" T_Alu="15(15)" T_Lut="24(24)"/>
+</Module>

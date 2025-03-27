@@ -4,6 +4,10 @@
   {
    "Path" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
    "Type" : "verilog"
+  },
+  {
+   "Path" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/uart_tx.v",
+   "Type" : "verilog"
   }
  ],
  "IncludePath" : [
