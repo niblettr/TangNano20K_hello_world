@@ -3,3 +3,17 @@
 
 
 
+blink/impl/gwsynthesis/blink.log
+blink/impl/gwsynthesis/blink.prj
+blink/impl/gwsynthesis/blink.vg
+blink/impl/gwsynthesis/blink_syn.rpt.html
+blink/impl/gwsynthesis/blink_syn_resource.html
+blink/impl/gwsynthesis/blink_syn_rsc.xml
+blink/impl/pnr/blink.pin.html
+blink/impl/pnr/blink.power.html
+blink/impl/pnr/blink.rpt.html
+blink/impl/pnr/blink.tr.html
+blink/impl/pnr/blink_tr_cata.html
+blink/impl/pnr/blink_tr_content.html
+blink/impl/temp/rtl_parser.result
+blink/impl/temp/rtl_parser_arg.json
