@@ -23,3 +23,6 @@ blink/impl/pnr/blink.log
 blink/impl/pnr/blink.rpt.txt
 blink/impl/pnr/cmd.do
 blink/impl/pnr/device.cfg
+blink/impl/pnr/blink.bin
+blink/impl/pnr/blink.db
+blink/impl/pnr/blink.timing_paths
