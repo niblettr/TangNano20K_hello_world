@@ -2,11 +2,11 @@
  "Device" : "GW2AR-18C",
  "Files" : [
   {
-   "Path" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+   "Path" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
    "Type" : "verilog"
   },
   {
-   "Path" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/uart_tx.v",
+   "Path" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/uart_tx.v",
    "Type" : "verilog"
   }
  ],
@@ -14,7 +14,7 @@
 
  ],
  "LoopLimit" : 2000,
- "ResultFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/impl/temp/rtl_parser.result",
+ "ResultFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/impl/temp/rtl_parser.result",
  "Top" : "",
  "VerilogStd" : "sysv",
  "VhdlStd" : "vhdl_93"

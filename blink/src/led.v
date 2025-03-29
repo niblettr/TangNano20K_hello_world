@@ -6,7 +6,7 @@ module led(
 );
 
     /********** UART String **********/
-    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
+    reg [7:0] uart_string [0:5] = {"T", "i", "s", "t", 13, 10}; // "Test\r\n"
     reg [3:0] uart_string_index = 0; // Index for string transmission    
 
     /********** Constants **********/

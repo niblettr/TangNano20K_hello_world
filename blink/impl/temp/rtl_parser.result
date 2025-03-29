@@ -1,17 +1,17 @@
 [
  {
-  "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+  "InstFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
   "InstLine" : 1,
   "InstName" : "led",
-  "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
+  "ModuleFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
   "ModuleLine" : 1,
   "ModuleName" : "led",
   "SubInsts" : [
    {
-    "InstFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/led.v",
-    "InstLine" : 36,
+    "InstFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/led.v",
+    "InstLine" : 37,
     "InstName" : "uart_inst",
-    "ModuleFile" : "C:/YunexDev/TangNano/Tang20K_Hello_world/blink/src/uart_tx.v",
+    "ModuleFile" : "C:/Yoga_share/Source Control/Tang_Nano_20K/HelloWorld/blink/src/uart_tx.v",
     "ModuleLine" : 1,
     "ModuleName" : "uart_tx"
    }
