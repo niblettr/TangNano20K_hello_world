@@ -12,23 +12,23 @@
   <Part Number>: GW2AR-LV18QN88C8/I7
   <Device>: GW2AR-18
   <Device Version>: C
-  <Created Time>:Thu Mar 27 11:40:59 2025
+  <Created Time>:Thu Mar 27 11:50:43 2025
 
 
 2. PnR Details
 
   Running placement:
-    Placement Phase 0: CPU time = 0h 0m 0.008s, Elapsed time = 0h 0m 0.009s
-    Placement Phase 1: CPU time = 0h 0m 0.185s, Elapsed time = 0h 0m 0.184s
-    Placement Phase 2: CPU time = 0h 0m 0.01s, Elapsed time = 0h 0m 0.011s
-    Placement Phase 3: CPU time = 0h 0m 0.61s, Elapsed time = 0h 0m 0.61s
-    Total Placement: CPU time = 0h 0m 0.813s, Elapsed time = 0h 0m 0.814s
+    Placement Phase 0: CPU time = 0h 0m 0.009s, Elapsed time = 0h 0m 0.009s
+    Placement Phase 1: CPU time = 0h 0m 0.229s, Elapsed time = 0h 0m 0.229s
+    Placement Phase 2: CPU time = 0h 0m 0.014s, Elapsed time = 0h 0m 0.014s
+    Placement Phase 3: CPU time = 0h 0m 0.656s, Elapsed time = 0h 0m 0.656s
+    Total Placement: CPU time = 0h 0m 0.908s, Elapsed time = 0h 0m 0.908s
  Running routing:
-    Routing Phase 0: CPU time = 0h 0m 0.001s, Elapsed time = 0h 0m 0s
-    Routing Phase 1: CPU time = 0h 0m 0.111s, Elapsed time = 0h 0m 0.111s
-    Routing Phase 2: CPU time = 0h 0m 0.146s, Elapsed time = 0h 0m 0.147s
+    Routing Phase 0: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
+    Routing Phase 1: CPU time = 0h 0m 0.109s, Elapsed time = 0h 0m 0.109s
+    Routing Phase 2: CPU time = 0h 0m 0.144s, Elapsed time = 0h 0m 0.144s
     Routing Phase 3: CPU time = 0h 0m 0s, Elapsed time = 0h 0m 0s
-    Total Routing: CPU time = 0h 0m 0.258s, Elapsed time = 0h 0m 0.258s
+    Total Routing: CPU time = 0h 0m 0.253s, Elapsed time = 0h 0m 0.253s
  Generate output files:
     CPU time = 0h 0m 1s, Elapsed time = 0h 0m 1s
 
@@ -100,12 +100,12 @@
 Port Name  | Diff Pair | Loc./Bank     | Constraint | Dir.  | Site     | IO Type    | Drive | Pull Mode | PCI Clamp | Hysteresis | Open Drain | Vref       | Single Resistor | Diff Resistor | BankVccio 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Clock      | -         | 4/7           | Y          | in    | IOL7[A]  | LVCMOS33   | NA    | UP        | ON        | NONE       | NA         | NA         | OFF             | NA            | 3.3       
-Led_0      | -         | 15/6          | Y          | out   | IOL47[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Led_1      | -         | 16/6          | Y          | out   | IOL47[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Led_2      | -         | 17/6          | Y          | out   | IOL49[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Led_3      | -         | 18/6          | Y          | out   | IOL49[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Led_4      | -         | 19/6          | Y          | out   | IOL51[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
-Led_5      | -         | 20/6          | Y          | out   | IOL51[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[0]    | -         | 15/6          | Y          | out   | IOL47[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[1]    | -         | 16/6          | Y          | out   | IOL47[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[2]    | -         | 17/6          | Y          | out   | IOL49[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[3]    | -         | 18/6          | Y          | out   | IOL49[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[4]    | -         | 19/6          | Y          | out   | IOL51[A] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
+leds[5]    | -         | 20/6          | Y          | out   | IOL51[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
 Uart_TX    | -         | 55/3          | Y          | out   | IOR36[B] | LVCMOS33   | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3       
 ==================================================================================================================================================================================================================
 
@@ -158,12 +158,12 @@ Loc./Bank| Signal   | Dir.  | Site     | IO Type  | Drive | Pull Mode | PCI Clam
 10/6     | -        | in    | IOL29[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 11/6     | -        | in    | IOL29[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
 13/6     | -        | in    | IOL45[A] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
-15/6     | Led_0    | out   | IOL47[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
-16/6     | Led_1    | out   | IOL47[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
-17/6     | Led_2    | out   | IOL49[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
-18/6     | Led_3    | out   | IOL49[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
-19/6     | Led_4    | out   | IOL51[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
-20/6     | Led_5    | out   | IOL51[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+15/6     | leds[0]  | out   | IOL47[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+16/6     | leds[1]  | out   | IOL47[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+17/6     | leds[2]  | out   | IOL49[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+18/6     | leds[3]  | out   | IOL49[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+19/6     | leds[4]  | out   | IOL51[A] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
+20/6     | leds[5]  | out   | IOL51[B] | LVCMOS33 | 8     | UP        | NA        | NA         | OFF        | NA         | OFF             | NA            | 3.3  
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 8/2      | -        | out   | IOR25[A] | LVCMOS18 | 8     | UP        | NA        | NA         | OFF        | NA         | NA              | NA            | 3.3  
 5/2      | -        | in    | IOR25[B] | LVCMOS18 | NA    | UP        | ON        | NONE       | NA         | NA         | NA              | NA            | 3.3  
