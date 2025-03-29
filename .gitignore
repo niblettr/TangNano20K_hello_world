@@ -3,26 +3,7 @@
 
 
 
-blink/impl/gwsynthesis/blink.log
-blink/impl/gwsynthesis/blink.prj
-blink/impl/gwsynthesis/blink.vg
-blink/impl/gwsynthesis/blink_syn.rpt.html
-blink/impl/gwsynthesis/blink_syn_resource.html
-blink/impl/gwsynthesis/blink_syn_rsc.xml
-blink/impl/pnr/blink.pin.html
-blink/impl/pnr/blink.power.html
-blink/impl/pnr/blink.rpt.html
-blink/impl/pnr/blink.tr.html
-blink/impl/pnr/blink_tr_cata.html
-blink/impl/pnr/blink_tr_content.html
-blink/impl/temp/rtl_parser.result
-blink/impl/temp/rtl_parser_arg.json
-blink/impl/pnr/blink.binx
-blink/impl/pnr/blink.fs
-blink/impl/pnr/blink.log
-blink/impl/pnr/blink.rpt.txt
-blink/impl/pnr/cmd.do
-blink/impl/pnr/device.cfg
-blink/impl/pnr/blink.bin
-blink/impl/pnr/blink.db
-blink/impl/pnr/blink.timing_paths
+blink/impl/gwsynthesis/
+blink/impl/pnr/
+blink/impl/temp
+
