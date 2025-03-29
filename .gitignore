@@ -17,3 +17,9 @@ blink/impl/pnr/blink_tr_cata.html
 blink/impl/pnr/blink_tr_content.html
 blink/impl/temp/rtl_parser.result
 blink/impl/temp/rtl_parser_arg.json
+blink/impl/pnr/blink.binx
+blink/impl/pnr/blink.fs
+blink/impl/pnr/blink.log
+blink/impl/pnr/blink.rpt.txt
+blink/impl/pnr/cmd.do
+blink/impl/pnr/device.cfg
