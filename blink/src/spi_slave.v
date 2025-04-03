@@ -18,10 +18,12 @@ module spi_slave (
 
 
     reg spi_clk_sync1, spi_clk_sync2;
+
     always @(posedge system_clk) begin
         spi_clk_sync1 <= spi_clk;
         spi_clk_sync2 <= spi_clk_sync1;
     end
+
     wire spi_clk_stable = spi_clk_sync2;
 
 
