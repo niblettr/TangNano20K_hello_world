@@ -1,13 +1,19 @@
 module led( 
-    input  Clock,
-    output [5:0] leds,   // Array for LEDs (Pins 15-20)
-    output Uart_TX,      // Pin49
-    input  Uart_RX       // Pin55
+    input  Clock,         // System Clock 27MHz            Pin4
+    input  SPI_SCK,       // SPI clock                     Pin52
+    input  SPI_CS,        // SPI chip select               Pin31
+    input  SPI_MOSI,      // SPI Master Out, Slave In      Pin71
+    output SPI_MISO,      // SPI Master In, Slave Out      Pin53
+    output [5:0] leds,    // Array for LEDs                Pin15,Pin16,Pin17,Pin18,Pin19,Pin20
+    output Uart_TX,       // Transmit pin of UART          Pin55
+    input  Uart_RX,       // Receive pin of UART           Pin51
+    output Debug_Pin      // Debug toggle                  Pin30
 );
 
     /********** UART String **********/
-    reg [7:0] uart_string [0:5] = {"t", "u", "s", "s", 13, 10}; // "Test\r\n"
-    reg [3:0] uart_string_index = 0; // Index for string transmission    
+    reg [7:0] uart_string [0:5] = {"t", "e", "s", "a", 13, 10}; // "Test\r\n"
+    reg [3:0] uart_string_index = 0; // Index for string transmission
+
 
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
@@ -28,7 +34,7 @@ module led(
 
     /********** UART Transmission **********/
     reg [7:0] uart_data = 8'b0;  // Data to transmit
-    reg uart_start = 1'b0;       // Start signal for UART
+    reg start_uart = 1'b0;       // Start signal for UART
     wire uart_ready;             // Indicates if FIFO can accept more data
 
     uart_tx #(
@@ -36,18 +42,38 @@ module led(
         .BAUD_RATE(BAUD_RATE)
     ) uart_inst (
         .clk(Clock),
-        .start(uart_start),
+        .start_uart(start_uart),
         .data(uart_data),
         .tx(Uart_TX),
         .ready(uart_ready)
     );
 
+    /********** SPI Slave **********/
+    wire [7:0] spi_received_data;      // Data received from SPI master
+    wire spi_data_ready;               // Indicates SPI data is ready
+    reg spi_read_ack = 1'b0;           // Acknowledge signal for SPI data
+    reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master
+
+    spi_slave spi_inst (
+        .system_clk(Clock),
+        .spi_clk(SPI_SCK),
+        .spi_cs(SPI_CS),
+        .mosi(SPI_MOSI),
+        .miso(SPI_MISO),
+        .data_ready(spi_data_ready),
+        .read_ack(spi_read_ack),
+        .received_data(spi_received_data),
+        .data_to_send(spi_data_to_send),
+        .Debug(Debug_Pin)
+    );
+
     /****************************************************************************************************/
     // LED handling
+    
     always @(posedge Clock) begin
         // Counter for delay
         if (count_value_reg < COUNT_DELAY) begin
-            count_value_reg <= count_value_reg + 1; // Increment counter
+            count_value_reg <= count_value_reg + 1'b1; // Increment counter
         end
         else begin
             count_value_reg <= 0; // Reset counter
@@ -68,27 +94,71 @@ module led(
         end
     end
 
-    /****************************************************************************************************/
-    // UART transmission logic using FIFO
+/********** UART String Transmission **********/
+/*
+reg [1:0] uart_state = 2'b00; // State machine for UART string transmission
+always @(posedge Clock) begin
+    case (uart_state)
+        2'b00: begin
+            if (uart_ready) begin
+                uart_data <= uart_string[uart_string_index]; // Load the current character
+                uart_start <= 1'b1; // Trigger UART transmission
+                uart_state <= 2'b01; // Move to the next state
+            end
+        end
+        2'b01: begin
+            uart_start <= 1'b0; // Deassert start signal
+            uart_state <= 2'b10; // Wait for UART to finish transmission
+        end
+        2'b10: begin
+            if (uart_ready) begin
+                if (uart_string_index < 5) begin
+                    uart_string_index <= uart_string_index + 1'b1; // Move to the next character
+                    uart_state <= 2'b00; // Go back to the first state
+                end else begin
+                    uart_string_index <= 0; // Reset the index
+                    uart_state <= 2'b11; // Restart transmission if needed
+                end
+            end
+        end
+        2'b11: begin
+           end
+    endcase
+end
+*/
+
+    reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
+
     always @(posedge Clock) begin
-        if (uart_counter < UART_DELAY) begin
-            uart_counter <= uart_counter + 1; // Increment UART delay counter
-            uart_start <= 1'b0; // Ensure start is low unless sending data
-        end
-        else if (uart_ready && !uart_start) begin
-            uart_counter <= 0; // Reset UART delay counter
-            uart_data <= uart_string[uart_string_index]; // Load the current character
-            uart_start <= 1'b1; // Trigger UART transmission
-            
-            // Move to the next character
-            uart_string_index <= (uart_string_index < 5) ? uart_string_index + 1 : 0;
-        end
-        else begin
-            uart_start <= 1'b0; // Ensure `start` is deasserted after one cycle
-        end
+        case (uart_spi_state)
+            2'b00: begin
+                if (spi_data_ready && uart_ready) begin
+                    uart_data <= spi_received_data; // Load SPI data into UART FIFO
+                    //uart_data <= 8'hAA;           // test uart byte
+                    start_uart <= 1'b1;             // Trigger UART FIFO enqueue
+                    spi_read_ack <= 1'b1;           // Acknowledge SPI data
+                    uart_spi_state <= 2'b01;        // Move to the next state
+                end else begin
+                    start_uart <= 1'b0;             // Ensure UART start is deasserted
+                    spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
+                end
+            end
+            2'b01: begin
+                start_uart <= 1'b0; // Deassert start signal
+                spi_read_ack <= 1'b0; // Deassert SPI acknowledgment
+                uart_spi_state <= 2'b10; // Wait for UART to finish transmission
+            end
+            2'b10: begin
+                if (uart_ready) begin
+                    uart_spi_state <= 2'b00; // Go back to the first state
+                end
+            end
+        endcase
     end
 
-    /********** Continuous Assignments **********/
+
+/********** Continuous Assignments **********/
+
 generate
     genvar i; // Declare a generate variable 'i'
     for (i = 0; i < 6; i = i + 1) begin
