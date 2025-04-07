@@ -45,7 +45,7 @@ module led(
         .start_uart(start_uart),
         .data(uart_data),
         .tx(Uart_TX),
-        .ready(uart_ready)
+        .fifo_ready(uart_ready)
     );
 
     /********** SPI Slave **********/
