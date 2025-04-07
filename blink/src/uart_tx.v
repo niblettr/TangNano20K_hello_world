@@ -6,7 +6,7 @@ module uart_tx #(
     input start_uart,         // Signal to enqueue data into the UART FIFO
     input [7:0] data,         // Data byte to transmit
     output reg tx,            // UART transmit line
-    output reg ready          // Indicates if the FIFO can accept more data
+    output reg fifo_ready          // Indicates if the FIFO can accept more data
 );
 
     // Calculate the baud rate divisor
@@ -28,7 +28,7 @@ module uart_tx #(
     // Initialize tx to idle state (high) and FIFO ready flag
     initial begin
         tx = 1'b1;       // UART idle state
-        ready = 1'b1;    // FIFO is initially empty
+        fifo_ready = 1'b1;    // FIFO is initially empty
     end
 
     always @(posedge clk) begin
@@ -40,7 +40,7 @@ module uart_tx #(
         end
 
         // Update ready flag
-        ready <= (fifo_count < 16);
+        fifo_ready <= (fifo_count < 16);
 
         // Handle UART transmission
         if (!transmitting && fifo_count > 0) begin
