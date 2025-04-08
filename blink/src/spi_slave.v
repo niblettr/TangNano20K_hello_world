@@ -4,11 +4,11 @@ module spi_slave (
     input  wire       spi_cs,         // Chip select (active low)
     input  wire       mosi,           // Master Out, Slave In
     output wire       miso,           // Master In, Slave Out
-    output reg        data_ready,     // Data received flag
-    input  wire       read_ack,       // Acknowledgment from master to clear flag
-    output reg [7:0]  received_data,  // Received byte
-    input  wire [7:0]  data_to_send   // Data to send back
-    //output reg [7:0]  Debug           // Debug counter for rising edges
+    output reg        spi_data_ready, // Data received flag
+    input  wire       spi_read_ack,   // Acknowledgment from master to clear flag
+    output reg [7:0]  spi_rx_data,    // Received spi byte
+    input  wire [7:0] data_to_send,   // Data to send back
+    output reg        Debug_spi       // 
 );
 
     // Internal registers
@@ -32,9 +32,9 @@ module spi_slave (
     always @(posedge system_clk) begin
         if (spi_cs == 1'b1) begin
             // SPI not active — reset internal state
-            bit_count   <= 3'b0;
-            data_ready  <= 1'b0;
-            miso_reg    <= data_to_send; // Load full byte to transmit
+            bit_count       <= 3'b0;
+            spi_data_ready  <= 1'b0;
+            miso_reg        <= data_to_send; // Load full byte to transmit
         end else begin
             if (spi_rising_edge) begin
                 shift_reg <= {shift_reg[6:0], mosi}; // Shift in data
@@ -42,8 +42,9 @@ module spi_slave (
                 //Debug <= Debug + 1'b1;
 
                 if (bit_count == 3'b111) begin
-                    received_data <= {shift_reg[6:0], mosi}; // Latch full byte
-                    data_ready <= 1'b1;
+                    spi_rx_data    <= {shift_reg[6:0], mosi}; // Latch full byte
+                    spi_data_ready <= 1'b1;
+                    Debug_spi = ~Debug_spi;
                 end
             end
 
@@ -53,9 +54,9 @@ module spi_slave (
             end
         end
 
-        // Clear data_ready when acknowledged
-        if (read_ack) begin
-            data_ready <= 1'b0;
+        // Clear spi_data_ready when acknowledged
+        if (spi_read_ack) begin
+            spi_data_ready <= 1'b0;
         end
     end
 

@@ -5,8 +5,8 @@ module Top_module(
     input  SPI_MOSI,      // SPI Master Out, Slave In      Pin71
     output SPI_MISO,      // SPI Master In, Slave Out      Pin53
     output [5:0] leds,    // Array for LEDs                Pin15,Pin16,Pin17,Pin18,Pin19,Pin20
-    output Uart_TX,       // Transmit pin of UART          Pin55
-    input  Uart_RX,       // Receive pin of UART           Pin51
+    output Uart_TX_Pin,   // Transmit pin of UART          Pin55
+    input  Uart_RX_Pin,   // Receive pin of UART           Pin51
     output Debug_Pin      // Debug toggle                  Pin30
 );
 
@@ -35,7 +35,7 @@ module Top_module(
 
 
     /********** UART Transmission **********/
-    reg [7:0] uart_data = 8'b0;  // Data to transmit
+    reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
     reg start_uart = 1'b0;       // Start signal for UART
     wire uart_ready;             // Indicates if FIFO can accept more data
 
@@ -45,13 +45,13 @@ module Top_module(
     ) uart_inst (
         .clk(Clock),
         .start_uart(start_uart),
-        .data(uart_data),
-        .tx(Uart_TX),
+        .data(uart_tx_data),
+        .uart_tx_pin(Uart_TX_Pin),
         .fifo_ready(uart_ready)
     );
 
     /********** SPI Slave **********/
-    wire [7:0] spi_received_data;      // Data received from SPI master
+    wire [7:0] spi_rx_data;            // Data received from SPI master
     wire spi_data_ready;               // Indicates SPI data is ready
     reg spi_read_ack = 1'b0;           // Acknowledge signal for SPI data
     reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master
@@ -62,11 +62,11 @@ module Top_module(
         .spi_cs(SPI_CS),
         .mosi(SPI_MOSI),
         .miso(SPI_MISO),
-        .data_ready(spi_data_ready),
-        .read_ack(spi_read_ack),
-        .received_data(spi_received_data),
-        .data_to_send(spi_data_to_send)
-        //.Debug(Debug_Pin)
+        .spi_data_ready(spi_data_ready),
+        .spi_read_ack(spi_read_ack),
+        .spi_rx_data(spi_rx_data), 
+        .data_to_send(spi_data_to_send),
+        .Debug_spi(Debug_spi)
     );
 
 
@@ -78,7 +78,7 @@ always @(posedge Clock) begin
     case (uart_state)
         2'b00: begin
             if (uart_ready) begin
-                uart_data <= uart_string[uart_string_index]; // Load the current character
+                uart_tx_data <= uart_string[uart_string_index]; // Load the current character
                 uart_start <= 1'b1; // Trigger UART transmission
                 uart_state <= 2'b01; // Move to the next state
             end
@@ -106,14 +106,15 @@ end
 
 /*****************************************************************************************/
 /* Echo SPI received data back over the uart */
+/*
     reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
 
     always @(posedge Clock) begin
         case (uart_spi_state)
             2'b00: begin
                 if (spi_data_ready && uart_ready) begin
-                    uart_data <= spi_received_data; // Load SPI data into UART FIFO
-                    //uart_data <= 8'hAA;           // test uart byte
+                    uart_tx_data <= spi_rx_data;       // Load SPI data into UART FIFO
+                    //uart_tx_data <= 8'hAA;           // test uart byte
                     start_uart <= 1'b1;             // Trigger UART FIFO enqueue
                     spi_read_ack <= 1'b1;           // Acknowledge SPI data
                     uart_spi_state <= 2'b01;        // Move to the next state
@@ -134,15 +135,16 @@ end
             end
         endcase
     end
-
+*/
 /*****************************************************************************************/
 
 /********** SPI compare stuff  **********/
 reg [7:0] spi_buffer [0:15];       // 16-byte buffer for SPI data
-reg [5:0] spi_write_ptr = 0;       // Write pointer for the buffer
+reg [4:0] spi_write_ptr = 0;       // Write pointer for the buffer
 reg compare_buffer_full = 1'b0;    // Indicates if the buffer is full buffer_full
 reg [7:0] fixed_buffer [0:15];     // Fixed buffer for comparison
-reg match_flag = 1'b0;             // Flag to indicate if buffers match
+reg match_flag  = 1'b0;            // Flag to indicate we have a 16 byte 
+reg debug_match = 1'b0;            // Flag to indicate if buffers match
 
 
 // Initialize the fixed buffer with a predefined pattern
@@ -162,25 +164,29 @@ end
 
 // verify 16 SPI bytes received with matching constant string of "SPI debug data\r\n"
 // does not work.... HOW DAMN HARD CAN IT BE!!
-reg temp_match_flag; // Temporary variable for comparison
 
 always @(posedge Clock) begin
     if (spi_data_ready && !compare_buffer_full) begin
-        spi_buffer[spi_write_ptr] <= spi_received_data; // Store received data in buffer
+
+        spi_buffer[spi_write_ptr] <= spi_rx_data;      // Store received data in buffer
+        spi_read_ack <= 1'b1;                          // Acknowledge SPI data
         spi_write_ptr <= spi_write_ptr + 1'b1;         // Increment write pointer
-        
+
         if (spi_write_ptr == 5'd15) begin
+            debug_match <=1;
             compare_buffer_full <= 1'b1;               // Mark buffer as full
         end
-    end
+    end else begin
+      spi_read_ack <= 1'b0;
+      end
 
     if (compare_buffer_full) begin
-        temp_match_flag = 1'b1; // Assume match initially
-
+        match_flag = 1'b1; // Assume match initially
+        
         // Compare spi_buffer with fixed_buffer
         for (integer i = 0; i < 16; i = i + 1) begin
             if (spi_buffer[i] != fixed_buffer[i]) begin
-                temp_match_flag = 1'b0; // Set match flag to 0 if mismatch
+                match_flag = 1'b0; // Set match flag to 0 if mismatch
             end
         end
 
@@ -189,15 +195,15 @@ always @(posedge Clock) begin
     end
 
     if (spi_write_ptr == 5'd15 && SPI_CS == 0) begin
-        match_flag <=1;
+        //debug_match <=1;
     end 
 
     if(SPI_CS == 1) begin
-       match_flag <= 0;
+       debug_match <= 0; // clear it back down
     end
 end
 
 /********** Continuous Assignment **********/
-assign Debug_Pin = match_flag;
-
+assign Debug_Pin = debug_match;
+//assign Debug_Pin = Debug_spi;
 endmodule
