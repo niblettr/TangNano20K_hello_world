@@ -153,7 +153,7 @@ initial begin
      fixed_buffer[4],  fixed_buffer[5],  fixed_buffer[6],  fixed_buffer[7], 
      fixed_buffer[8],  fixed_buffer[9],  fixed_buffer[10], fixed_buffer[11], 
      fixed_buffer[12], fixed_buffer[13], fixed_buffer[14], fixed_buffer[15]} = 
-     {"SPI debug data", 8'h0D, 8'h0A};
+    {"SPI debug data", 8'h0D, 8'h0A};
 
     for (integer i = 0; i < 16; i = i + 1) begin
         spi_buffer[i] = 8'b0; // Initialize SPI buffer to zero
