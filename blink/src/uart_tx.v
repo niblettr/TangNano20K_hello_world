@@ -2,11 +2,11 @@ module uart_tx #(
     parameter CLOCK_FREQUENCY = 27000000, // System clock frequency in Hz
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
-    input clk,                // System clock
-    input start_uart,         // Signal to enqueue data into the UART FIFO
-    input [7:0] data,         // Data byte to transmit
-    output reg uart_tx_pin,   // UART transmit line
-    output reg fifo_ready          // Indicates if the FIFO can accept more data
+    input clk,                  // System clock
+    input start_uart,           // Signal to enqueue data into the UART FIFO
+    input [7:0] uart_tx_data,         // Data byte to transmit
+    output reg  uart_tx_pin,    // UART transmit line
+    output reg  fifo_ready      // Indicates if the FIFO can accept more data
 );
 
     // Calculate the baud rate divisor
@@ -34,7 +34,7 @@ module uart_tx #(
     always @(posedge clk) begin
         // Handle new data input
         if (start_uart && (fifo_count < FIFO_SIZE)) begin // Prevent FIFO overflow
-            fifo[fifo_tail] <= data;                      // Store data in FIFO
+            fifo[fifo_tail] <= uart_tx_data;              // Store data in FIFO
             fifo_tail <= fifo_tail + 1'b1;                // Increment tail pointer (wraps around)
             fifo_count <= fifo_count + 1'b1;              // Increment FIFO count
         end

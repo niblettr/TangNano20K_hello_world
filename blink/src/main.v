@@ -36,8 +36,8 @@ module Top_module(
 
     /********** UART Transmission **********/
     reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
-    reg start_uart = 1'b0;       // Start signal for UART
-    wire uart_ready;             // Indicates if FIFO can accept more data
+    reg start_uart = 1'b0;          // Start signal for UART
+    wire uart_ready;                // Indicates if FIFO can accept more data
 
     uart_tx #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -45,7 +45,7 @@ module Top_module(
     ) uart_inst (
         .clk(Clock),
         .start_uart(start_uart),
-        .data(uart_tx_data),
+        .uart_tx_data(uart_tx_data),
         .uart_tx_pin(Uart_TX_Pin),
         .fifo_ready(uart_ready)
     );
@@ -106,7 +106,7 @@ end
 
 /*****************************************************************************************/
 /* Echo SPI received data back over the uart */
-/*
+
     reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
 
     always @(posedge Clock) begin
@@ -135,7 +135,7 @@ end
             end
         endcase
     end
-*/
+
 /*****************************************************************************************/
 
 /********** SPI compare stuff  **********/
@@ -169,7 +169,7 @@ always @(posedge Clock) begin
     if (spi_data_ready && !compare_buffer_full) begin
 
         spi_buffer[spi_write_ptr] <= spi_rx_data;      // Store received data in buffer
-        spi_read_ack <= 1'b1;                          // Acknowledge SPI data
+        //spi_read_ack <= 1'b1;                          // Acknowledge SPI data
         spi_write_ptr <= spi_write_ptr + 1'b1;         // Increment write pointer
 
         if (spi_write_ptr == 5'd15) begin
@@ -177,7 +177,7 @@ always @(posedge Clock) begin
             compare_buffer_full <= 1'b1;               // Mark buffer as full
         end
     end else begin
-      spi_read_ack <= 1'b0;
+      //spi_read_ack <= 1'b0;
       end
 
     if (compare_buffer_full) begin
