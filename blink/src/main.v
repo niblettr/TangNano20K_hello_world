@@ -1,4 +1,4 @@
-module led( 
+module Top_module( 
     input  Clock,         // System Clock 27MHz            Pin4
     input  SPI_SCK,       // SPI clock                     Pin52
     input  SPI_CS,        // SPI chip select               Pin31
