@@ -23,7 +23,7 @@ module uart_tx #(
     reg [7:0] fifo [0:FIFO_SIZE-1];       // FIFO buffer
     reg [5:0] fifo_head = 0;              // Points to the next byte to transmit (6 bits for 64 entries)
     reg [5:0] fifo_tail = 0;              // Points to the next free slot (6 bits for 64 entries)
-    reg [5:0] fifo_count = 0;             // Number of bytes in the FIFO (6 bits for counting up to 64)
+    reg [6:0] fifo_count = 0;             // Number of bytes in the FIFO (7 bits for counting up to 64)
 
     // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
     initial begin
@@ -33,7 +33,7 @@ module uart_tx #(
 
     always @(posedge clk) begin
         // Handle new data input
-        if (start_uart && (fifo_count < FIFO_SIZE)) begin
+        if (start_uart && (fifo_count < FIFO_SIZE)) begin // Prevent FIFO overflow
             fifo[fifo_tail] <= uart_tx_data;              // Store data in FIFO
             fifo_tail <= fifo_tail + 1'b1;                // Increment tail pointer (wraps around)
             fifo_count <= fifo_count + 1'b1;              // Increment FIFO count

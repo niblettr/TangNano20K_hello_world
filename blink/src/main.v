@@ -37,7 +37,7 @@ module Top_module(
     /********** UART Transmission **********/
     reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
     reg start_uart = 1'b0;          // Start signal for UART
-    wire uart_fifo_ready;           // Indicates if FIFO can accept more data
+    wire uart_ready;                // Indicates if FIFO can accept more data
 
     uart_tx #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -47,7 +47,7 @@ module Top_module(
         .start_uart(start_uart),
         .uart_tx_data(uart_tx_data),
         .uart_tx_pin(Uart_TX_Pin),
-        .fifo_ready(uart_fifo_ready)
+        .fifo_ready(uart_ready)
     );
 
     /********** SPI Slave **********/
@@ -77,7 +77,7 @@ reg [1:0] uart_state = 2'b00; // State machine for UART string transmission
 always @(posedge Clock) begin
     case (uart_state)
         2'b00: begin
-            if (uart_fifo_ready) begin
+            if (uart_ready) begin
                 uart_tx_data <= uart_string[uart_string_index]; // Load the current character
                 uart_start <= 1'b1; // Trigger UART transmission
                 uart_state <= 2'b01; // Move to the next state
@@ -88,7 +88,7 @@ always @(posedge Clock) begin
             uart_state <= 2'b10; // Wait for UART to finish transmission
         end
         2'b10: begin
-            if (uart_fifo_ready) begin
+            if (uart_ready) begin
                 if (uart_string_index < 5) begin
                     uart_string_index <= uart_string_index + 1'b1; // Move to the next character
                     uart_state <= 2'b00; // Go back to the first state
@@ -110,32 +110,26 @@ end
     reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
 
 always @(posedge Clock) begin
-    // Default assignments to avoid latches
-    start_uart <= 1'b0;
-    spi_read_ack <= 1'b0;
-
     case (uart_spi_state)
         2'b00: begin
-            if (spi_data_ready && uart_fifo_ready) begin
+                if (spi_data_ready && uart_ready) begin
                 uart_tx_data <= spi_rx_data;    // Load SPI data into UART FIFO
+                    //uart_tx_data <= 8'hAA;           // test uart byte
                 start_uart <= 1'b1;             // Trigger UART FIFO enqueue
                 spi_read_ack <= 1'b1;           // Acknowledge SPI data
                 uart_spi_state <= 2'b01;        // Move to the next state
+                end else begin
+                    start_uart <= 1'b0;             // Ensure UART start is deasserted
+                    spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
             end
         end
         2'b01: begin
-            // Ensure signals are deasserted
-            start_uart <= 1'b0;
-            spi_read_ack <= 1'b0;
-
-            // Wait for UART transmission to start
-            if (!uart_fifo_ready) begin
-                uart_spi_state <= 2'b10; // Move to the next state
-            end
+                start_uart <= 1'b0;      // Deassert start signal
+                spi_read_ack <= 1'b0;    // Deassert SPI acknowledgment
+                uart_spi_state <= 2'b10; // Wait for UART to finish transmission
         end
         2'b10: begin
-            // Wait for UART FIFO to be ready again
-            if (uart_fifo_ready) begin
+                if (uart_ready) begin
                 uart_spi_state <= 2'b00; // Go back to the first state
             end
         end
@@ -148,7 +142,7 @@ end
 reg [7:0] spi_buffer [0:15];       // 16-byte buffer for SPI data
 reg [4:0] spi_write_ptr = 0;       // Write pointer for the buffer
 reg compare_buffer_full = 1'b0;    // Indicates if the buffer is full buffer_full
-reg [7:0] fixed_buffer [15:0];     // Fixed buffer for comparison
+reg [7:0] fixed_buffer [0:15];     // Fixed buffer for comparison
 reg match_flag  = 1'b0;            // Flag to indicate we have a 16 byte 
 reg debug_match = 1'b0;            // Flag to indicate if buffers match
 
@@ -170,7 +164,7 @@ end
 
 // verify 16 SPI bytes received with matching constant string of "SPI debug data\r\n"
 // does not work.... HOW DAMN HARD CAN IT BE!!
-/*
+
 always @(posedge Clock) begin
     if (spi_data_ready && !compare_buffer_full) begin
 
@@ -208,7 +202,7 @@ always @(posedge Clock) begin
        debug_match <= 0; // clear it back down
     end
 end
-*/
+
 /********** Continuous Assignment **********/
 assign Debug_Pin = debug_match;
 //assign Debug_Pin = Debug_spi;
