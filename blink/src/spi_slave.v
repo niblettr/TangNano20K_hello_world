@@ -8,7 +8,7 @@ module spi_slave (
     input  wire       spi_read_ack,   // Acknowledgment from master to clear flag
     output reg [7:0]  spi_rx_data,    // Received spi byte
     input  wire [7:0] data_to_send,   // Data to send back
-    output reg        Debug_spi       // 
+    output reg        Debug_spi       // routed to pin in top module, for debug purposes...
 );
 
     // Internal registers
@@ -39,7 +39,7 @@ module spi_slave (
             if (spi_rising_edge) begin
                 shift_reg <= {shift_reg[6:0], mosi}; // Shift in data
                 bit_count <= bit_count + 1'b1;
-                //Debug <= Debug + 1'b1;
+                //Debug_spi = ~Debug_spi;
 
                 if (bit_count == 3'b111) begin
                     spi_rx_data    <= {shift_reg[6:0], mosi}; // Latch full byte

@@ -133,71 +133,11 @@ end
 /*****************************************************************************************/
 
 /********** SPI compare stuff  **********/
-reg [7:0] spi_buffer [0:15];       // 16-byte buffer for SPI data
 reg [4:0] spi_write_ptr = 0;       // Write pointer for the buffer
-reg compare_buffer_full = 1'b0;    // Indicates if the buffer is full buffer_full
-reg [7:0] fixed_buffer [0:15];     // Fixed buffer for comparison
 reg match_flag  = 1'b0;            // Flag to indicate we have a 16 byte 
-reg debug_match = 1'b0;            // Flag to indicate if buffers match
 
 
-// Initialize the fixed buffer with a predefined pattern
-//"SPI debug data"
-//"SPI debug data to Uart brige with 64byte fifo\r\n"
-initial begin
-    {fixed_buffer[0],  fixed_buffer[1],  fixed_buffer[2],  fixed_buffer[3], 
-     fixed_buffer[4],  fixed_buffer[5],  fixed_buffer[6],  fixed_buffer[7], 
-     fixed_buffer[8],  fixed_buffer[9],  fixed_buffer[10], fixed_buffer[11], 
-     fixed_buffer[12], fixed_buffer[13], fixed_buffer[14], fixed_buffer[15]} = 
-    {"SPI debug data", 8'h0D, 8'h0A};
-
-    for (integer i = 0; i < 16; i = i + 1) begin
-        spi_buffer[i] = 8'b0; // Initialize SPI buffer to zero
-    end
-end
-
-// verify 16 SPI bytes received with matching constant string of "SPI debug data\r\n"
-// does not work.... HOW DAMN HARD CAN IT BE!!
-/*
-always @(posedge Clock) begin
-    if (spi_data_ready && !compare_buffer_full) begin
-
-        spi_buffer[spi_write_ptr] <= spi_rx_data;      // Store received data in buffer
-        //spi_read_ack <= 1'b1;                          // Acknowledge SPI data
-        spi_write_ptr <= spi_write_ptr + 1'b1;         // Increment write pointer
-
-        if (spi_write_ptr == 5'd15) begin
-            debug_match <=1;
-            compare_buffer_full <= 1'b1;               // Mark buffer as full
-        end
-    end else begin
-      //spi_read_ack <= 1'b0;
-      end
-
-    if (compare_buffer_full) begin
-        match_flag = 1'b1; // Assume match initially
-        
-        // Compare spi_buffer with fixed_buffer
-        for (integer i = 0; i < 16; i = i + 1) begin
-            if (spi_buffer[i] != fixed_buffer[i]) begin
-                match_flag = 1'b0; // Set match flag to 0 if mismatch
-            end
-        end
-
-        compare_buffer_full <= 1'b0;  // Clear buffer full flag after comparison
-        spi_write_ptr <= 0;           // Reset write pointer after processing
-    end
-
-    if (spi_write_ptr == 5'd15 && SPI_CS == 0) begin
-        //debug_match <=1;
-    end 
-
-    if(SPI_CS == 1) begin
-       debug_match <= 0; // clear it back down
-    end
-end
-*/
 /********** Continuous Assignment **********/
-assign Debug_Pin = debug_match;
-//assign Debug_Pin = Debug_spi;
+//assign Debug_Pin = debug_match;
+assign Debug_Pin = Debug_spi;
 endmodule
