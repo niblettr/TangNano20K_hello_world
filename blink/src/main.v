@@ -19,8 +19,9 @@ module Top_module(
     //parameter UART_DELAY = CLOCK_FREQUENCY / 100; // 1-second delay for UART transmission
 
     /********** UART String **********/
-    //reg [7:0] uart_string [0:5] = {"t", "e", "s", "a", 13, 10}; // "Test\r\n"
-    //reg [3:0] uart_string_index = 0; // Index for string transmission
+    reg [7:0] uart_string [0:5] = {"t", "e", "s", "t", 13, 10}; // "Test\r\n"
+    parameter uart_string_len   = 6;
+    reg [3:0] uart_string_index = 0; // Index for string transmission
 
 
 /**************************************************************************************************************/
@@ -37,7 +38,7 @@ module Top_module(
     /********** UART Transmission **********/
     reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
     reg start_uart = 1'b0;          // Start signal for UART
-    wire uart_ready;                // Indicates if FIFO can accept more data
+    wire uart_fifo_ready;                // Indicates if FIFO can accept more data
 
     uart_tx #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -47,7 +48,7 @@ module Top_module(
         .start_uart(start_uart),
         .uart_tx_data(uart_tx_data),
         .uart_tx_pin(Uart_TX_Pin),
-        .fifo_ready(uart_ready)
+        .fifo_ready(uart_fifo_ready)
     );
 
     /********** SPI Slave **********/
@@ -72,47 +73,87 @@ module Top_module(
 
 
 /********** UART String Transmission **********/
+// works flawlessly
 /*
-reg [1:0] uart_state = 2'b00; // State machine for UART string transmission
+reg [2:0] uart_state = 3'b00; // State machine for UART string transmission
+reg [32:0] wait_delay = 32'b0;
 always @(posedge Clock) begin
     case (uart_state)
         2'b00: begin
-            if (uart_ready) begin
+            if (uart_fifo_ready) begin
                 uart_tx_data <= uart_string[uart_string_index]; // Load the current character
-                uart_start <= 1'b1; // Trigger UART transmission
-                uart_state <= 2'b01; // Move to the next state
+                start_uart <= 1'b1;   // Trigger UART transmission
+                uart_state <= 3'b001; // Move to the next state
             end
         end
         2'b01: begin
-            uart_start <= 1'b0; // Deassert start signal
-            uart_state <= 2'b10; // Wait for UART to finish transmission
+            start_uart <= 1'b0;   // Deassert start signal
+            uart_state <= 2'b010; // Move to the next state
         end
         2'b10: begin
-            if (uart_ready) begin
-                if (uart_string_index < 5) begin
+            if (uart_fifo_ready) begin
+                if (uart_string_index < uart_string_len-1) begin
                     uart_string_index <= uart_string_index + 1'b1; // Move to the next character
-                    uart_state <= 2'b00; // Go back to the first state
+                    uart_state <= 3'b00; // Go back to the first state
                 end else begin
                     uart_string_index <= 0; // Reset the index
-                    uart_state <= 2'b11; // Restart transmission if needed
+                    uart_state <= 3'b011;   // Move to the next state
                 end
             end
         end
-        2'b11: begin
-           end
+        2'b011: begin
+            if(wait_delay == 32'd2700000) begin  // 100ms
+                uart_state <= 3'b000; // Go back to the first state
+                wait_delay <= 32'b0; // Reset wait delay
+            end else begin
+                wait_delay <= wait_delay + 1'b1; // Increment wait delay
+            end
+
+        end
     endcase
 end
 */
 
+reg [2:0] uart_state  = 3'b000; // State machine for UART string transmission
+reg [32:0] wait_delay = 32'b0;
+always @(posedge Clock) begin
+
+    case (uart_state)
+        3'b000: begin
+                if (uart_string_index < uart_string_len-1) begin
+                    uart_tx_data <= uart_string[uart_string_index]; // Load the current character
+                    uart_string_index <= uart_string_index + 1'b1; // Move to the next character
+                    
+                end else begin
+                    uart_string_index <= 1'b0;  // reset index
+                    start_uart <= 1'b1;         // Trigger UART transmission
+                    uart_state <= 3'b010;       // Move to the next state
+                end
+        end
+
+        3'b010: begin
+            start_uart <= 1'b0;   // Deassert start signal
+            if(wait_delay == 32'd2700000) begin  // 100ms
+                wait_delay <= 32'b0; // Reset wait delay
+                uart_state <= 3'b000; // Go back to the first state
+            end else begin
+                wait_delay <= wait_delay + 1'b1; // Increment wait delay
+            end
+
+        end
+    endcase
+end
+
+
 /*****************************************************************************************/
 /* Echo SPI received data back over the uart */
-
-    reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
+/*
+reg [1:0] uart_spi_state = 2'b00; // State machine for UART transmission
 
 always @(posedge Clock) begin
     case (uart_spi_state)
         2'b00: begin
-                if (spi_data_ready && uart_ready) begin
+                if (spi_data_ready && uart_fifo_ready) begin
                 uart_tx_data <= spi_rx_data;    // Load SPI data into UART FIFO
                     //uart_tx_data <= 8'hAA;           // test uart byte
                 start_uart <= 1'b1;             // Trigger UART FIFO enqueue
@@ -129,13 +170,13 @@ always @(posedge Clock) begin
                 uart_spi_state <= 2'b10; // Wait for UART to finish transmission
         end
         2'b10: begin
-                if (uart_ready) begin
+                if (uart_fifo_ready) begin
                 uart_spi_state <= 2'b00; // Go back to the first state
             end
         end
     endcase
 end
-
+*/
 /*****************************************************************************************/
 
 /********** SPI compare stuff  **********/
@@ -164,7 +205,7 @@ end
 
 // verify 16 SPI bytes received with matching constant string of "SPI debug data\r\n"
 // does not work.... HOW DAMN HARD CAN IT BE!!
-
+/*
 always @(posedge Clock) begin
     if (spi_data_ready && !compare_buffer_full) begin
 
@@ -202,7 +243,7 @@ always @(posedge Clock) begin
        debug_match <= 0; // clear it back down
     end
 end
-
+*/
 /********** Continuous Assignment **********/
 assign Debug_Pin = debug_match;
 //assign Debug_Pin = Debug_spi;

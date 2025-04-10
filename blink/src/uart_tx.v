@@ -11,7 +11,7 @@ module uart_tx #(
 
     // Calculate the baud rate divisor
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
-    localparam FIFO_SIZE = 16; // FIFO size as a local parameter
+    localparam FIFO_SIZE = 64; // FIFO size as a local parameter
 
     // Internal registers
     reg [15:0] baud_counter = 0;          // Counter for baud rate timing
