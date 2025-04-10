@@ -33,14 +33,13 @@ module uart_tx #(
 
     always @(posedge clk) begin
         // Handle new data input
-        if (start_uart && (fifo_count < FIFO_SIZE)) begin // Prevent FIFO overflow
+        if ( start_uart && (fifo_count < FIFO_SIZE)) begin              // Prevent FIFO overflow
             fifo[fifo_tail] <= uart_tx_data;              // Store data in FIFO
             fifo_tail <= fifo_tail + 1'b1;                // Increment tail pointer (wraps around)
             fifo_count <= fifo_count + 1'b1;              // Increment FIFO count
         end
-
-        // Update ready flag
-        fifo_ready <= (fifo_count < FIFO_SIZE);
+        
+        fifo_ready <= (fifo_count < FIFO_SIZE);           // Update ready flag
 
         // Handle UART transmission
         if (!transmitting && fifo_count > 0) begin
