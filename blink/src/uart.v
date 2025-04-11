@@ -3,11 +3,11 @@ module uart #(
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
     input       clk,            // System clock
-    input       start_uart,     // Signal to enqueue data into the UART FIFO
+    input       start_uart_tx,     // Signal to enqueue data into the UART FIFO
     input [7:0] uart_tx_data,   // Data byte to transmit
     output reg  uart_tx_pin,    // UART transmit line
     input       uart_rx_pin,    // UART receive line
-    output reg  fifo_ready,     // Indicates if the FIFO can accept more data
+    output reg  uart_tx_fifo_ready,     // Indicates if the FIFO can accept more data
     output reg  Debug_uart,     // Routed to pin in top module, for debug purposes...
     output reg  [7:0] uart_rx_data, // Received data byte
     output reg  uart_rx_ready      // Indicates a byte has been received
@@ -39,7 +39,7 @@ module uart #(
     // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
     initial begin
         uart_tx_pin = 1'b1;       // UART idle state
-        fifo_ready  = 1'b1;       // FIFO is initially empty
+        uart_tx_fifo_ready  = 1'b1;       // FIFO is initially empty
         uart_rx_ready = 1'b0;     // No data received initially
     end
 
@@ -52,13 +52,13 @@ module uart #(
     // UART Transmit Logic
     always @(posedge clk) begin
         // Handle new data input
-        if (start_uart && (tx_fifo_count < FIFO_SIZE_TX)) begin
+        if (start_uart_tx && (tx_fifo_count < FIFO_SIZE_TX)) begin
             tx_fifo[tx_fifo_tail] <= uart_tx_data;            // Store data in FIFO
             tx_fifo_tail <= tx_fifo_tail + 1'b1;              // Increment tail pointer (wraps around)
             tx_fifo_count <= tx_fifo_count + 1'b1;            // Increment FIFO count
         end
         
-        fifo_ready <= (tx_fifo_count < FIFO_SIZE_TX);         // Update ready flag
+        uart_tx_fifo_ready <= (tx_fifo_count < FIFO_SIZE_TX);         // Update ready flag
 
         // Handle UART transmission
         if (!transmitting && tx_fifo_count > 0) begin

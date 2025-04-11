@@ -39,18 +39,18 @@ module Top_module(
 
     /********** UART Transmission **********/
     reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
-    reg start_uart = 1'b0;          // Start signal for UART
-    wire uart_fifo_ready;           // Indicates if FIFO can accept more data
+    reg start_uart_tx = 1'b0;          // Start signal for UART
+    wire uart_tx_fifo_ready;           // Indicates if FIFO can accept more data
 
     uart #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .BAUD_RATE(BAUD_RATE)
     ) uart_inst (
         .clk(Clock),
-        .start_uart(start_uart),
+        .start_uart_tx(start_uart_tx),
         .uart_tx_data(uart_tx_data),
         .uart_tx_pin(Uart_TX_Pin),
-        .fifo_ready(uart_fifo_ready),
+        .uart_tx_fifo_ready(uart_tx_fifo_ready),
         .Debug_uart(Debug_uart)
     );
 
@@ -86,7 +86,7 @@ always @(posedge Clock) begin
         3'b000: begin
            if (uart_string_index < uart_string_len) begin
               uart_tx_data <= uart_string[uart_string_index]; // Load the current character
-              start_uart <= 1'b1;                             // Trigger UART transmission
+              start_uart_tx <= 1'b1;                             // Trigger UART transmission
               uart_string_index <= uart_string_index + 1'b1;  // Move to the next character
               uart_tx_state <= 3'b010;
            end else begin
@@ -95,12 +95,12 @@ always @(posedge Clock) begin
            end
         end
         3'b010: begin
-           start_uart <= 1'b0;               // Deassert start signal one clock cycle later
+           start_uart_tx <= 1'b0;               // Deassert start signal one clock cycle later
            uart_tx_state <= 3'b000;          // move back to start
         end
 
         3'b011: begin
-            start_uart <= 1'b0;   // Deassert start signal
+            start_uart_tx <= 1'b0;   // Deassert start signal
             if(wait_delay == 32'd2700000) begin  // 100ms
                 wait_delay <= 32'b0; // Reset wait delay
                 uart_tx_state <= 3'b000; // Go back to the first state
@@ -119,13 +119,13 @@ reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
 
 always @(posedge Clock) begin
    //TopLevelDebug = ~TopLevelDebug;
-   start_uart <= 1'b0;             // Ensure UART start is deasserted
+   start_uart_tx <= 1'b0;             // Ensure UART start is deasserted
    spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
 
    if (spi_data_ready && !spi_data_processed) begin
       uart_tx_data <= spi_rx_data;    // Load SPI data into UART FIFO
       spi_read_ack <= 1'b1;           // Acknowledge SPI data, clears spi_data_ready in SPI module
-      start_uart <= 1'b1;             // Trigger UART transmission
+      start_uart_tx <= 1'b1;             // Trigger UART transmission
       spi_data_processed <= 1'b1;     // Mark data as processed
    end
 
