@@ -15,7 +15,7 @@ module uart #(
 
     // Calculate the baud rate divisor
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
-    localparam FIFO_SIZE = 64; // FIFO size as a local parameter
+    localparam FIFO_SIZE_TX = 64; // FIFO size as a local parameter
 
     // Internal registers for transmission
     reg [15:0] baud_counter = 0;          // Counter for baud rate timing
@@ -24,10 +24,10 @@ module uart #(
     reg transmitting = 1'b0;              // Indicates if UART is currently transmitting
 
     // FIFO buffer for data
-    reg [7:0] fifo [0:FIFO_SIZE-1];       // FIFO buffer
-    reg [5:0] fifo_head = 0;              // Points to the next byte to transmit (6 bits for 64 entries)
-    reg [5:0] fifo_tail = 0;              // Points to the next free slot (6 bits for 64 entries)
-    reg [6:0] fifo_count = 0;             // Number of bytes in the FIFO (7 bits for counting up to 64)
+    reg [7:0] tx_fifo [0:FIFO_SIZE_TX-1];       // FIFO buffer
+    reg [5:0] tx_fifo_head = 0;              // Points to the next byte to transmit (6 bits for 64 entries)
+    reg [5:0] tx_fifo_tail = 0;              // Points to the next free slot (6 bits for 64 entries)
+    reg [6:0] tx_fifo_count = 0;             // Number of bytes in the FIFO (7 bits for counting up to 64)
 
     // Internal registers for reception
     reg [15:0] rx_baud_counter = 0;       // Counter for baud rate timing during reception
@@ -52,20 +52,20 @@ module uart #(
     // UART Transmit Logic
     always @(posedge clk) begin
         // Handle new data input
-        if (start_uart && (fifo_count < FIFO_SIZE)) begin
-            fifo[fifo_tail] <= uart_tx_data;            // Store data in FIFO
-            fifo_tail <= fifo_tail + 1'b1;              // Increment tail pointer (wraps around)
-            fifo_count <= fifo_count + 1'b1;            // Increment FIFO count
+        if (start_uart && (tx_fifo_count < FIFO_SIZE_TX)) begin
+            tx_fifo[tx_fifo_tail] <= uart_tx_data;            // Store data in FIFO
+            tx_fifo_tail <= tx_fifo_tail + 1'b1;              // Increment tail pointer (wraps around)
+            tx_fifo_count <= tx_fifo_count + 1'b1;            // Increment FIFO count
         end
         
-        fifo_ready <= (fifo_count < FIFO_SIZE);         // Update ready flag
+        fifo_ready <= (tx_fifo_count < FIFO_SIZE_TX);         // Update ready flag
 
         // Handle UART transmission
-        if (!transmitting && fifo_count > 0) begin
+        if (!transmitting && tx_fifo_count > 0) begin
             transmitting <= 1'b1;                       // Start transmission
-            shift_reg <= {1'b1, fifo[fifo_head], 1'b0}; // Load start bit, data, and stop bit
-            fifo_head <= fifo_head + 1'b1;              // Increment head pointer (wraps around)
-            fifo_count <= fifo_count - 1'b1;            // Decrement FIFO count
+            shift_reg <= {1'b1, tx_fifo[tx_fifo_head], 1'b0}; // Load start bit, data, and stop bit
+            tx_fifo_head <= tx_fifo_head + 1'b1;              // Increment head pointer (wraps around)
+            tx_fifo_count <= tx_fifo_count - 1'b1;            // Decrement FIFO count
             baud_counter <= 0;                          // Reset baud counter
         end
 
