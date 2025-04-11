@@ -44,7 +44,7 @@ module spi_slave (
                 if (bit_count == 3'b111) begin
                     spi_rx_data    <= {shift_reg[6:0], mosi}; // Latch full byte
                     spi_data_ready <= 1'b1;
-                    Debug_spi = ~Debug_spi;
+                    //Debug_spi = ~Debug_spi;
                 end
             end
 

@@ -6,7 +6,8 @@ module uart_tx #(
     input       start_uart,     // Signal to enqueue data into the UART FIFO
     input [7:0] uart_tx_data,   // Data byte to transmit
     output reg  uart_tx_pin,    // UART transmit line
-    output reg  fifo_ready      // Indicates if the FIFO can accept more data
+    output reg  fifo_ready,     // Indicates if the FIFO can accept more data
+    output reg  Debug_uart      // routed to pin in top module, for debug purposes...
 );
 
     // Calculate the baud rate divisor
@@ -33,13 +34,15 @@ module uart_tx #(
 
     always @(posedge clk) begin
         // Handle new data input
-        if ( start_uart && (fifo_count < FIFO_SIZE)) begin              // Prevent FIFO overflow
-            fifo[fifo_tail] <= uart_tx_data;              // Store data in FIFO
-            fifo_tail <= fifo_tail + 1'b1;                // Increment tail pointer (wraps around)
-            fifo_count <= fifo_count + 1'b1;              // Increment FIFO count
+        if ( start_uart && (fifo_count < FIFO_SIZE)) begin
+            fifo[fifo_tail] <= uart_tx_data;            // Store data in FIFO
+            fifo_tail <= fifo_tail + 1'b1;              // Increment tail pointer (wraps around)
+            fifo_count <= fifo_count + 1'b1;            // Increment FIFO count
+        end else if(fifo_count >= FIFO_SIZE) begin
+
         end
         
-        fifo_ready <= (fifo_count < FIFO_SIZE);           // Update ready flag
+        fifo_ready <= (fifo_count < FIFO_SIZE);         // Update ready flag
 
         // Handle UART transmission
         if (!transmitting && fifo_count > 0) begin

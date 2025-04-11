@@ -10,6 +10,8 @@ module Top_module(
     output Debug_Pin      // Debug toggle                  Pin30
 );
 
+    reg TopLevelDebug = 0;
+
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
     parameter HALF_PERIOD     = 100;       // Adjust for desired speed
@@ -48,7 +50,8 @@ module Top_module(
         .start_uart(start_uart),
         .uart_tx_data(uart_tx_data),
         .uart_tx_pin(Uart_TX_Pin),
-        .fifo_ready(uart_fifo_ready)
+        .fifo_ready(uart_fifo_ready),
+        .Debug_uart(Debug_uart)
     );
 
     /********** SPI Slave **********/
@@ -115,6 +118,7 @@ end
 reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
 
 always @(posedge Clock) begin
+   //TopLevelDebug = ~TopLevelDebug;
    start_uart <= 1'b0;             // Ensure UART start is deasserted
    spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
 
@@ -132,12 +136,8 @@ end
 
 /*****************************************************************************************/
 
-/********** SPI compare stuff  **********/
-reg [4:0] spi_write_ptr = 0;       // Write pointer for the buffer
-reg match_flag  = 1'b0;            // Flag to indicate we have a 16 byte 
-
-
 /********** Continuous Assignment **********/
-//assign Debug_Pin = debug_match;
-assign Debug_Pin = Debug_spi;
+//assign Debug_Pin = Debug_uart;
+//assign Debug_Pin = Debug_spi;
+assign Debug_Pin = TopLevelDebug;
 endmodule
