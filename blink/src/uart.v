@@ -36,6 +36,36 @@ module uart #(
     reg receiving = 1'b0;                 // Indicates if UART is currently receiving
     reg uart_rx_pin_sync1, uart_rx_pin_sync2; // Synchronize uart_rx_pin to the clock domain
 
+
+
+fifo #(
+    .DATA_WIDTH(8),
+    .DEPTH(16)
+) fifo_tx_inst (
+    .clk(clk),
+    .reset(tx_fifo_reset),
+    .write_en(tx_fifo_write_en),
+    .read_en(tx_fifo_read_en),
+    .data_in(tx_fifo_data_in),
+    .data_out(tx_fifo_data_out),
+    .full(tx_fifo_full),
+    .empty(tx_fifo_empty)
+);
+
+fifo #(
+    .DATA_WIDTH(8),
+    .DEPTH(16)
+) fifo_rx_inst (
+    .clk(clk),
+    .reset(rx_fifo_reset),
+    .write_en(rx_fifo_write_en),
+    .read_en(rx_fifo_read_en),
+    .data_in(rx_fifo_data_in),
+    .data_out(rx_fifo_data_out),
+    .full(rx_fifo_full),
+    .empty(rx_fifo_empty)
+);
+
     // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
     initial begin
         uart_tx_pin = 1'b1;       // UART idle state
