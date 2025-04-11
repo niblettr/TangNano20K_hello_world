@@ -42,7 +42,7 @@ module Top_module(
     reg start_uart = 1'b0;          // Start signal for UART
     wire uart_fifo_ready;           // Indicates if FIFO can accept more data
 
-    uart_tx #(
+    uart #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .BAUD_RATE(BAUD_RATE)
     ) uart_inst (

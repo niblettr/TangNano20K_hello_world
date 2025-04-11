@@ -1,4 +1,4 @@
-module uart_tx #(
+module uart #(
     parameter CLOCK_FREQUENCY = 27000000, // System clock frequency in Hz
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
