@@ -33,6 +33,11 @@ module uart #(
     reg [5:0] tx_fifo_tail = 0;              // Points to the next free slot (6 bits for 64 entries)
     reg [6:0] tx_fifo_count = 0;             // Number of bytes in the FIFO (7 bits for counting up to 64)
 
+    // FIFO TX NEW
+    reg tx_fifo_reset;
+    reg tx_fifo_write_en;
+    reg [7:0]tx_fifo_data_in;
+
     // Internal registers for reception
     reg [15:0] rx_baud_counter = 0;            // Counter for baud rate timing during reception
     reg [3:0]  rx_bit_index = 0;               // Index for bits being received
@@ -46,10 +51,10 @@ module uart #(
     reg [7:0]rx_fifo_data_in;
 
 
-/*
+
 fifo #(
     .DATA_WIDTH(8),
-    .DEPTH(16)
+    .DEPTH(64)
 ) fifo_tx_inst (
     .clk(clk),
     .reset(tx_fifo_reset),
@@ -60,7 +65,7 @@ fifo #(
     .full(tx_fifo_full),
     .empty(tx_fifo_empty)
 );
-*/
+
 fifo #(
     .DATA_WIDTH(8),
     .DEPTH(64)
@@ -76,25 +81,27 @@ fifo #(
     .Debug_fifo(Debug_uart)
 );
 
-    // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
-// Initialize uart_tx_pin to idle state (high) and FIFO ready flag
-reg [3:0] reset_counter = 4'b0; // 4-bit counter for reset delay
-reg _reset = 1'b1;              // Reset signal
-reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
-always @(posedge clk) begin
-    if (!reset_done) begin
-        if (reset_counter < 4'd10) begin
-            reset_counter <= reset_counter + 1'b1;
-            _reset <= 1'b1; // Keep reset asserted
-            rx_fifo_reset <= 1'b1;
-        end else begin
-            _reset <= 1'b0;        // Deassert reset after 10 clock cycles
-            reset_done <= 1'b1;    // Latch that reset is done
-            rx_fifo_reset <= 1'b0;
+    // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
+    reg [3:0] reset_counter = 4'b0; // 4-bit counter for reset delay
+    reg _reset = 1'b1;              // Reset signal
+    reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
+
+    always @(posedge clk) begin
+        if (!reset_done) begin
+            if (reset_counter < 4'd10) begin
+                reset_counter <= reset_counter + 1'b1;
+                _reset <= 1'b1; // Keep reset asserted
+                rx_fifo_reset <= 1'b1;
+                tx_fifo_reset <= 1'b1;
+            end else begin
+               _reset <= 1'b0;        // Deassert reset after 10 clock cycles
+                reset_done <= 1'b1;    // Latch that reset is done
+                rx_fifo_reset <= 1'b0;
+                tx_fifo_reset <= 1'b0;
+            end
         end
     end
-end
 
     // UART Transmit Logic
     always @(posedge clk) begin
