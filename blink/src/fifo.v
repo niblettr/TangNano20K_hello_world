@@ -9,7 +9,8 @@ module fifo #(
     input  [DATA_WIDTH-1:0] data_in,    // Data to write into the FIFO
     output [DATA_WIDTH-1:0] data_out,   // Data read from the FIFO
     output                  full,       // FIFO full flag
-    output                  empty       // FIFO empty flag
+    output                  empty,      // FIFO empty flag
+    output reg              Debug_fifo
 );
 
     // Internal signals
@@ -21,8 +22,13 @@ module fifo #(
     // Write operation
     always @(posedge clk or posedge reset) begin
         if (reset) begin
+            //Debug_fifo <= ~Debug_fifo; // I think I see this but it does it twice???? FFS!!!!
             write_ptr <= 0;
         end else if (write_en && !full) begin
+            //Debug_fifo <= ~Debug_fifo; // yes, we can see this!
+            if (data_in == 8'h48) begin // ASCII value for 'H'
+               //Debug_fifo <= ~Debug_fifo;
+            end
             mem[write_ptr] <= data_in;       // Write data to memory
             write_ptr <= write_ptr + 1'b1;  // Increment write pointer
         end

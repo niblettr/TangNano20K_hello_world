@@ -6,7 +6,7 @@ module Top_module(
     output SPI_MISO,      // SPI Master In, Slave Out      Pin53 (Nucleo PA6)
     output [5:0] leds,    // Array for LEDs                Pin15,Pin16,Pin17,Pin18,Pin19,Pin20
     output Uart_TX_Pin,   // Transmit pin of UART          Pin55
-    input  Uart_RX_Pin,   // Receive pin of UART           Pin51
+    input  Uart_RX_Pin,   // Receive pin of UART           Pin49
     output Debug_Pin      // Debug toggle                  Pin30
 );
 
@@ -36,24 +36,6 @@ module Top_module(
         .leds(leds)
     );
 
-
-    /********** UART Transmission **********/
-    reg [7:0] uart_tx_data = 8'b0;  // Data to transmit
-    reg start_uart_tx = 1'b0;          // Start signal for UART
-    wire uart_tx_fifo_ready;           // Indicates if FIFO can accept more data
-
-    uart #(
-        .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
-        .BAUD_RATE(BAUD_RATE)
-    ) uart_inst (
-        .clk(Clock),
-        .start_uart_tx(start_uart_tx),
-        .uart_tx_data(uart_tx_data),
-        .uart_tx_pin(Uart_TX_Pin),
-        .uart_tx_fifo_ready(uart_tx_fifo_ready),
-        .Debug_uart(Debug_uart)
-    );
-
     /********** SPI Slave **********/
     wire [7:0] spi_rx_data;            // Data received from SPI master
     wire spi_data_ready;               // Indicates SPI data is ready
@@ -74,9 +56,37 @@ module Top_module(
     );
 
 
+    /********** UART Transmission **********/
+    reg [7:0] uart_tx_data = 8'b0;     // Data to transmit
+    reg start_uart_tx = 1'b0;          // Start signal for UART
+    wire uart_tx_fifo_ready;           // Indicates if FIFO can accept more data
 
-/********** UART String Transmission **********/
-// works flawlessly
+
+    /********** UART Reception **********/
+    reg rx_fifo_read_en; // why the hell is this needed!!!!!!!!!!!!!!!!!
+    reg [7:0] rx_fifo_data_out = 8'b0;
+
+    uart #(
+        .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
+        .BAUD_RATE(BAUD_RATE)
+    ) uart_inst (
+        .clk(Clock),
+        .start_uart_tx(start_uart_tx),
+        .uart_tx_data(uart_tx_data),
+        .uart_tx_pin(Uart_TX_Pin),
+        .uart_tx_fifo_ready(uart_tx_fifo_ready),
+
+        .uart_rx_pin(Uart_RX_Pin),
+        .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
+        .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
+        .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
+
+        .Debug_uart(Debug_uart)
+    );
+
+/*
+/****************************************************************************************************/
+// test statemachine just for printing "Test" string out the uart
 /*
 reg [2:0] uart_tx_state  = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
@@ -113,28 +123,28 @@ always @(posedge Clock) begin
 end
 */
 
-/*****************************************************************************************/
-/* Echo SPI received data back over the uart */
-reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
 
+reg DoOnce = 1;
+// Echo Uart RX data back out the Uart TX using the fifo
 always @(posedge Clock) begin
-   //TopLevelDebug = ~TopLevelDebug;
-   start_uart_tx <= 1'b0;             // Ensure UART start is deasserted
-   spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
+    if (!rx_fifo_empty && !rx_fifo_read_en && uart_tx_fifo_ready) begin
+        rx_fifo_read_en <= 1'b1;           // Assert read enable to read from RX FIFO
+        uart_tx_data <= rx_fifo_data_out;  // Load RX FIFO data into UART TX
+        start_uart_tx <= 1'b1;             // Trigger UART transmission
 
-   if (spi_data_ready && !spi_data_processed) begin
-      uart_tx_data <= spi_rx_data;    // Load SPI data into UART FIFO
-      spi_read_ack <= 1'b1;           // Acknowledge SPI data, clears spi_data_ready in SPI module
-      start_uart_tx <= 1'b1;             // Trigger UART transmission
-      spi_data_processed <= 1'b1;     // Mark data as processed
-   end
-
-   if (!spi_data_ready) begin
-      spi_data_processed <= 1'b0;     // Reset flag when no data is ready
-   end
+        if (rx_fifo_data_out == 8'h48) begin
+            if(DoOnce) begin
+               //TopLevelDebug <= ~TopLevelDebug;
+               DoOnce <= 1'b0;
+            end
+        end
+    end else begin
+        rx_fifo_read_en <= 1'b0;           // Deassert RX FIFO read enable
+        start_uart_tx <= 1'b0;             // Deassert UART start signal
+    end
+    //TopLevelDebug <= uart_tx_fifo_ready;
 end
 
-/*****************************************************************************************/
 
 /********** Continuous Assignment **********/
 //assign Debug_Pin = Debug_uart;
