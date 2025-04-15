@@ -63,7 +63,7 @@ fifo #(
 */
 fifo #(
     .DATA_WIDTH(8),
-    .DEPTH(16)
+    .DEPTH(64)
 ) fifo_rx_inst (
     .clk(clk),
     .reset(rx_fifo_reset),

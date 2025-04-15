@@ -15,9 +15,9 @@ module fifo #(
 
     // Internal signals
     reg [DATA_WIDTH-1:0] mem [0:DEPTH-1]; // Memory array for the FIFO
-    reg [$clog2(DEPTH):0] write_ptr = 0;  // Write pointer
+    reg [$clog2(DEPTH)-1:0] write_ptr = 0;  // Write pointer
     reg [$clog2(DEPTH):0] read_ptr = 0;   // Read pointer
-    reg [$clog2(DEPTH)+1:0] count = 0;    // Count of elements in the FIFO
+    reg [$clog2(DEPTH):0] count = 0;    // Count of elements in the FIFO
 
     // Write operation
     always @(posedge clk or posedge reset) begin
@@ -31,6 +31,7 @@ module fifo #(
             end
             mem[write_ptr] <= data_in;       // Write data to memory
             write_ptr <= write_ptr + 1'b1;  // Increment write pointer
+            // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
         end
     end
 
@@ -40,6 +41,7 @@ module fifo #(
             read_ptr <= 0;
         end else if (read_en && !empty) begin
             read_ptr <= read_ptr + 1'b1;    // Increment read pointer
+            //or read_ptr <= (read_ptr + 1'b1) % DEPTH;    // Increment read pointer
         end
     end
 

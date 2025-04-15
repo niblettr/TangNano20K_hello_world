@@ -149,6 +149,7 @@ end
 
 reg DoOnce = 1;
 // Echo Uart RX data back out the Uart TX using the fifo
+
 always @(posedge Clock) begin
     if (!rx_fifo_empty && !rx_fifo_read_en && uart_tx_fifo_ready) begin
         rx_fifo_read_en <= 1'b1;           // Assert read enable to read from RX FIFO
