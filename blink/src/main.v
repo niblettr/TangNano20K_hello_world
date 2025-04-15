@@ -123,6 +123,29 @@ always @(posedge Clock) begin
 end
 */
 
+/*****************************************************************************************/
+/* Echo SPI received data back over the uart */
+/*
+reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
+
+always @(posedge Clock) begin
+   //TopLevelDebug = ~TopLevelDebug;
+   start_uart_tx <= 1'b0;             // Ensure UART start is deasserted
+   spi_read_ack <= 1'b0;           // Ensure SPI acknowledgment is deasserted
+
+   if (spi_data_ready && !spi_data_processed) begin
+      uart_tx_data <= spi_rx_data;    // Load SPI data into UART FIFO
+      spi_read_ack <= 1'b1;           // Acknowledge SPI data, clears spi_data_ready in SPI module
+      start_uart_tx <= 1'b1;             // Trigger UART transmission
+      spi_data_processed <= 1'b1;     // Mark data as processed
+   end
+
+   if (!spi_data_ready) begin
+      spi_data_processed <= 1'b0;     // Reset flag when no data is ready
+   end
+end
+*/
+
 
 reg DoOnce = 1;
 // Echo Uart RX data back out the Uart TX using the fifo
