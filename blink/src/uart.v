@@ -3,13 +3,12 @@ module uart #(
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
     input       clk,                  // System clock
-    input       start_uart_tx,        // Signal to enqueue data into the UART FIFO
-    input [7:0] uart_tx_data,         // Data byte to transmit
     output reg  uart_tx_pin,          // UART transmit line
-    output reg  uart_tx_fifo_ready,   // Indicates if the FIFO can accept more data
-
     input       uart_rx_pin,          // UART receive line
 
+    input [7:0] tx_fifo_data_in,         // Data byte to transmit
+    input tx_fifo_write_en,
+    //output reg  tx_fifo_empty,
     output reg  rx_fifo_empty,    
     output reg  [7:0] rx_fifo_data_out,
     input       rx_fifo_read_en,
@@ -19,38 +18,16 @@ module uart #(
 
     // Calculate the baud rate divisor
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
-    localparam FIFO_SIZE_TX = 64; // FIFO size as a local parameter
 
-    // Internal registers for transmission
-    reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
-    reg [3:0] bit_index = 0;              // Index for bits being transmitted
-    reg [9:0] tx_shift_reg = 10'b1111111111; // Shift register for start, data, and stop bits
-    reg transmitting = 1'b0;              // Indicates if UART is currently transmitting
-
-    // FIFO TX
-    reg [7:0] tx_fifo [0:FIFO_SIZE_TX-1];       // FIFO buffer
-    reg [5:0] tx_fifo_head = 0;              // Points to the next byte to transmit (6 bits for 64 entries)
-    reg [5:0] tx_fifo_tail = 0;              // Points to the next free slot (6 bits for 64 entries)
-    reg [6:0] tx_fifo_count = 0;             // Number of bytes in the FIFO (7 bits for counting up to 64)
-
-    // FIFO TX NEW
+    // TX FIFO
     reg tx_fifo_reset;
-    reg tx_fifo_write_en;
-    reg [7:0]tx_fifo_data_in;
+    reg tx_fifo_read_en;
+    reg [7:0]tx_fifo_data_out;
 
-    // Internal registers for reception
-    reg [15:0] rx_baud_counter = 0;            // Counter for baud rate timing during reception
-    reg [3:0]  rx_bit_index = 0;               // Index for bits being received
-    reg [7:0]  rx_shift_reg = 8'b0;            // Shift register for receiving data
-    reg        receiving = 1'b0;               // Indicates if UART is currently receiving
-    reg uart_rx_pin_sync1, uart_rx_pin_sync2;  // Synchronize uart_rx_pin to the clock domain
-
-    // FIFO RX
+    // RX FIFO
     reg rx_fifo_reset;
     reg rx_fifo_write_en;
     reg [7:0]rx_fifo_data_in;
-
-
 
 fifo #(
     .DATA_WIDTH(8),
@@ -103,45 +80,55 @@ fifo #(
         end
     end
 
+
+
+    // Internal registers for transmission
+    reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
+    reg [3:0] bit_index = 0;                 // Index for bits being transmitted
+    reg [9:0] tx_shift_reg = 10'b1111111111; // Shift register for start, data, and stop bits
+    reg transmitting = 1'b0;                 // Indicates if UART is currently transmitting
+
     // UART Transmit Logic
     always @(posedge clk) begin
-        // Handle new data input
-        if (start_uart_tx && (tx_fifo_count < FIFO_SIZE_TX)) begin
-            tx_fifo[tx_fifo_tail] <= uart_tx_data;            // Store data in FIFO
-            tx_fifo_tail <= tx_fifo_tail + 1'b1;              // Increment tail pointer (wraps around)
-            tx_fifo_count <= tx_fifo_count + 1'b1;            // Increment FIFO count
-        end
-        
-        uart_tx_fifo_ready <= (tx_fifo_count < FIFO_SIZE_TX);         // Update ready flag
 
         // Handle UART transmission
-        if (!transmitting && tx_fifo_count > 0) begin
-            transmitting <= 1'b1;                       // Start transmission
-            tx_shift_reg <= {1'b1, tx_fifo[tx_fifo_head], 1'b0}; // Load start bit, data, and stop bit
-            tx_fifo_head <= tx_fifo_head + 1'b1;              // Increment head pointer (wraps around)
-            tx_fifo_count <= tx_fifo_count - 1'b1;            // Decrement FIFO count
-            tx_baud_counter <= 0;                          // Reset baud counter
+        if (!transmitting && !tx_fifo_empty) begin
+           Debug_uart <= ~Debug_uart;
+           transmitting <= 1'b1;                           // Start transmission
+           tx_shift_reg <= {1'b1, tx_fifo_data_out, 1'b0}; // Load start bit, data, and stop bit
+           tx_fifo_read_en <= 1'b1;                        // Read from TX FIFO
+           tx_baud_counter <= 0;                           // Reset baud counter
+           bit_index <= 0;                                 // Reset bit index
+        end else begin
+           tx_fifo_read_en <= 1'b0;                        // Deassert read enable
         end
 
         if (transmitting) begin
-            if (tx_baud_counter < BAUD_DIVISOR - 1) begin
-                tx_baud_counter <= tx_baud_counter + 1'b1;   // Increment baud counter
-            end else begin
-                tx_baud_counter <= 0;                     // Reset baud counter
-                uart_tx_pin <= tx_shift_reg[0];           // Transmit the current bit
-                tx_shift_reg <= {1'b1, tx_shift_reg[9:1]};   // Shift to the next bit
-                bit_index <= bit_index + 1'b1;         // Increment bit index
+           if (tx_baud_counter < BAUD_DIVISOR - 1) begin
+              tx_baud_counter <= tx_baud_counter + 1'b1; // Increment baud counter
+           end else begin
+           tx_baud_counter <= 0;                       // Reset baud counter
+           uart_tx_pin <= tx_shift_reg[0];             // Transmit the current bit
+           tx_shift_reg <= {1'b1, tx_shift_reg[9:1]};  // Shift to the next bit
+           bit_index <= bit_index + 1'b1;              // Increment bit index
 
-                if (bit_index == 9) begin              // Stop after transmitting all bits
-                    transmitting <= 1'b0;              // End transmission
-                    bit_index <= 0;                    // Reset bit index
-                end
-            end
+           if (bit_index == 9) begin                   // Stop after transmitting all bits
+               transmitting <= 1'b0;                   // End transmission
+               bit_index <= 0;                         // Reset bit index
+           end
         end
     end
+end
 
     /*********************************************************************************************/
     // UART Receive Logic
+
+    // Internal registers for reception
+    reg [15:0] rx_baud_counter = 0;            // Counter for baud rate timing during reception
+    reg [3:0]  rx_bit_index = 0;               // Index for bits being received
+    reg [7:0]  rx_shift_reg = 8'b0;            // Shift register for receiving data
+    reg        receiving = 1'b0;               // Indicates if UART is currently receiving
+    reg uart_rx_pin_sync1, uart_rx_pin_sync2;  // Synchronize uart_rx_pin to the clock domain
 
     // Synchronize uart_rx_pin to the clock domain
     always @(posedge clk) begin
