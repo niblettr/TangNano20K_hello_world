@@ -1,5 +1,5 @@
 module Top_module( 
-    input  Clock,         // System Clock 27MHz            Pin4
+    input  clock,         // System Clock 27MHz            Pin4
     input  SPI_SCK,       // SPI clock                     Pin52 (Nucleo PA5)
     input  SPI_CS,        // SPI chip select               Pin31 (Nucleo PB4)
     input  SPI_MOSI,      // SPI Master Out, Slave In      Pin71 (Nucleo PA7)
@@ -37,17 +37,18 @@ module Top_module(
     reg spi_read_ack = 1'b0;           // Acknowledge signal for SPI data
     //reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master NOT USED ATM
 /**************************************************************************************************************/
+
     // led module instantiation
     led_scroll #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .LED_COUNT_DELAY(LED_COUNT_DELAY)
     ) led_scroll_inst (
-        .system_clk(Clock),
+        .system_clk(clock),
         .leds(leds)
     );
 
     spi_slave spi_inst (
-        .system_clk(Clock),
+        .system_clk(clock),
         .spi_clk(SPI_SCK),
         .spi_cs(SPI_CS),
         .mosi(SPI_MOSI),
@@ -63,7 +64,7 @@ module Top_module(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .BAUD_RATE(BAUD_RATE)
     ) uart_inst (
-        .clk(Clock),
+        .clk(clock),
         .tx_fifo_data_in(tx_fifo_data_in),
         .uart_tx_pin(Uart_TX_Pin),
         //.tx_fifo_empty(tx_fifo_empty),
@@ -120,7 +121,7 @@ end
 
 reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
 
-always @(posedge Clock) begin
+always @(posedge clock) begin
 
    tx_fifo_write_en <= 1'b0;             // Ensure UART start is deasserted 
    spi_read_ack <= 1'b0;
