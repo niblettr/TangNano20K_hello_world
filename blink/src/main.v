@@ -18,14 +18,24 @@ module Top_module(
     parameter integer LED_COUNT_DELAY = ((CLOCK_FREQUENCY / 1000) * HALF_PERIOD) - 1;
 
     parameter BAUD_RATE = 115200;
-    //parameter UART_DELAY = CLOCK_FREQUENCY / 100; // 1-second delay for UART transmission
 
-    /********** UART String **********/
+    /********** UART debug String **********/
     reg [7:0] uart_string [0:6] = {"H", "t", "e", "s", "t", 13, 10}; // "Test\r\n"
     parameter uart_string_len   = 7;
     reg [3:0] uart_string_index = 0; // Index for string transmission
 
 
+    /********** UART Transmission **********/
+    reg tx_fifo_write_en;
+    reg [7:0] tx_fifo_data_in = 8'b0;     // Data to transmit
+    /********** UART Reception **********/
+    reg rx_fifo_read_en;
+    reg [7:0] rx_fifo_data_out = 8'b0;
+    /********** SPI Slave **********/
+    wire [7:0] spi_rx_data;            // Data received from SPI master
+    wire spi_data_ready;               // Indicates SPI data is ready
+    reg spi_read_ack = 1'b0;           // Acknowledge signal for SPI data
+    //reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master NOT USED ATM
 /**************************************************************************************************************/
     // led module instantiation
     led_scroll #(
@@ -36,13 +46,6 @@ module Top_module(
         .leds(leds)
     );
 
-    /********** SPI Slave **********/
-    wire [7:0] spi_rx_data;            // Data received from SPI master
-    wire spi_data_ready;               // Indicates SPI data is ready
-    reg spi_read_ack = 1'b0;           // Acknowledge signal for SPI data
-    reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master
-
-/*
     spi_slave spi_inst (
         .system_clk(Clock),
         .spi_clk(SPI_SCK),
@@ -55,16 +58,6 @@ module Top_module(
         .data_to_send(spi_data_to_send),
         .Debug_spi(Debug_spi)
     );
-*/
-
-    /********** UART Transmission **********/
-    reg tx_fifo_write_en;
-    reg [7:0] tx_fifo_data_in = 8'b0;     // Data to transmit
-
-
-    /********** UART Reception **********/
-    reg rx_fifo_read_en;
-    reg [7:0] rx_fifo_data_out = 8'b0;
 
     uart #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -124,57 +117,39 @@ end
 */
 
 /*****************************************************************************************/
-/* Echo SPI received data back over the uart */
 
 reg spi_data_processed = 1'b0; // Flag to ensure data is processed only once
 
 always @(posedge Clock) begin
-   //TopLevelDebug = ~TopLevelDebug;
-   tx_fifo_write_en <= 1'b0;             // Ensure UART start is deasserted
-   spi_read_ack <= 1'b0;                 // Ensure SPI acknowledgment is deasserted
 
+   tx_fifo_write_en <= 1'b0;             // Ensure UART start is deasserted 
+   spi_read_ack <= 1'b0;
+   rx_fifo_read_en  <= 1'b0;
+
+// Echo SPI received data back over the uart
    if (spi_data_ready && !spi_data_processed) begin
+      TopLevelDebug <= ~TopLevelDebug; 
       tx_fifo_data_in <= spi_rx_data;    // Load SPI data into UART FIFO
       spi_read_ack <= 1'b1;              // Acknowledge SPI data, clears spi_data_ready in SPI module
       tx_fifo_write_en <= 1'b1;          // Trigger UART transmission
       spi_data_processed <= 1'b1;        // Mark data as processed
    end
-
    if (!spi_data_ready) begin
       spi_data_processed <= 1'b0;        // Reset flag when no data is ready
    end
-end
 
-
-
-reg DoOnce = 1;
 // Echo Uart RX data back out the Uart TX using the fifo
-/*
-always @(posedge Clock) begin
-    if (!rx_fifo_empty && !rx_fifo_read_en) begin
+    if (!rx_fifo_empty && !rx_fifo_read_en) begin // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
         rx_fifo_read_en <= 1'b1;           // Assert read enable to read from RX FIFO
         tx_fifo_write_en <= 1'b1;
         tx_fifo_data_in <= rx_fifo_data_out;  // Load RX FIFO data into UART TX
- 
-        TopLevelDebug <= ~TopLevelDebug;
-        
-        if (rx_fifo_data_out == 8'h48) begin
-            if(DoOnce) begin
-               //TopLevelDebug <= ~TopLevelDebug;
-               //DoOnce <= 1'b0;
-            end
-        end
-    end else begin
-        rx_fifo_read_en  <= 1'b0;           // Deassert RX FIFO read enable
-        tx_fifo_write_en <= 1'b0;
-
     end
-    //TopLevelDebug <= uart_tx_fifo_ready;
 end
-*/
+
 
 /********** Continuous Assignment **********/
-assign Debug_Pin = Debug_uart;
+//assign Debug_Pin = tx_fifo_write_en;
 //assign Debug_Pin = Debug_spi;
-//assign Debug_Pin = TopLevelDebug;
+assign Debug_Pin = TopLevelDebug;
+
 endmodule
