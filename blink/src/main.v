@@ -1,13 +1,14 @@
 module Top_module( 
-    input  clock,         // System Clock 27MHz            Pin4
-    input  SPI_SCK,       // SPI clock                     Pin52 (Nucleo PA5)
-    input  SPI_CS,        // SPI chip select               Pin31 (Nucleo PB4)
-    input  SPI_MOSI,      // SPI Master Out, Slave In      Pin71 (Nucleo PA7)
-    output SPI_MISO,      // SPI Master In, Slave Out      Pin53 (Nucleo PA6)
-    output [5:0] leds,    // Array for LEDs                Pin15,Pin16,Pin17,Pin18,Pin19,Pin20
-    output Uart_TX_Pin,   // Transmit pin of UART          Pin55
-    input  Uart_RX_Pin,   // Receive pin of UART           Pin49
-    output Debug_Pin      // Debug toggle                  Pin30
+    input  clock,          // System Clock 27MHz            Pin4
+    input  SPI_SCK,        // SPI clock                     Pin52 (Nucleo PA5)
+    input  SPI_CS,         // SPI chip select               Pin31 (Nucleo PB4)
+    input  SPI_MOSI,       // SPI Master Out, Slave In      Pin71 (Nucleo PA7)
+    output SPI_MISO,       // SPI Master In, Slave Out      Pin53 (Nucleo PA6)
+    output [5:0] leds,     // Array for LEDs                Pin15,Pin16,Pin17,Pin18,Pin19,Pin20
+    output Uart_TX_Pin,    // Transmit pin of UART          Pin55
+    input  Uart_RX_Pin,    // Receive pin of UART           Pin49
+    output Debug_Pin,      // Debug toggle                  Pin30
+    output Debug_clock_pin // Debug toggle                  Pin29
 );
 
     reg TopLevelDebug = 0;
@@ -142,6 +143,7 @@ end
 
 
 /********** Continuous Assignment **********/
+assign Debug_clock_pin = clock;
 //assign Debug_Pin = Debug_uart;
 assign Debug_Pin = Debug_spi;
 //assign Debug_Pin = TopLevelDebug;

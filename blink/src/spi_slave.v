@@ -16,7 +16,7 @@ module spi_slave (
     // Internal registers
     reg [7:0] shift_reg = 8'b0;       // Shift register for receiving data
     reg [2:0] bit_count = 3'b0;       // Bit counter
-    reg [7:0] miso_reg = 8'b0;        // Register to hold data for transmission
+    reg [7:0] miso_reg  = 8'b0;       // Register to hold data for transmission
 
     wire spi_fifo_full;
     reg spi_fifo_reset         = 1'b0;
@@ -72,10 +72,10 @@ module spi_slave (
 
     // SPI Receive logic
     always @(posedge clock) begin
-       spi_fifo_write_en <= 1'b0;             // Deassert write enable WORKS!!!!!!!!!!!!!!!!!!!!! LINE 74
+       spi_fifo_write_en <= 1'b0;             // Deassert write enable
        if (spi_cs == 1'b1) begin              // Reset logic when chip select is deasserted        
           bit_count <= 3'b0;                  // Reset bit counter
-          //miso_reg  <= data_to_send;          // Load full byte to transmit
+          //miso_reg  <= data_to_send;        // Load full byte to transmit
        end else begin
           if (spi_rising_edge) begin
              // Shift in data on SPI clock rising edge
@@ -86,10 +86,7 @@ module spi_slave (
                 if(!spi_fifo_full) begin
                    spi_fifo_write_en <= 1'b1;                  // Enable write to FIFO
                    spi_fifo_data_in <= {shift_reg[6:0], mosi}; // Latch full byte into FIFO
-                   Debug_spi <= ~Debug_spi;                    // Toggle debug signal
                 end
-             end else begin
-                //spi_fifo_write_en <= 1'b0;                  // Deassert write enable DOES NOT WORK LINE 90
              end
           end
           if (spi_falling_edge) begin
@@ -99,5 +96,7 @@ module spi_slave (
        end
     end
     // Connect miso to MSB of shift register (tri-state control if needed)
-    assign miso = (spi_cs == 1'b0) ? miso_reg[7] : 1'bz;
+    //assign miso = (spi_cs == 1'b0) ? miso_reg[7] : 1'bz;
+
+    assign Debug_spi = spi_fifo_write_en; //spi_fifo_write_en;
 endmodule
