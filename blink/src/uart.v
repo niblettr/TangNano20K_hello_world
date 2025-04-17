@@ -18,14 +18,17 @@ module uart #(
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
 
     // TX FIFO
-    reg tx_fifo_reset;
-    reg tx_fifo_read_en;
+    reg      tx_fifo_reset;
+    reg      tx_fifo_read_en;
     reg [7:0]tx_fifo_data_out;
+    wire     tx_fifo_full;
+    wire     tx_fifo_empty;
 
     // RX FIFO
-    reg rx_fifo_reset;
-    reg rx_fifo_write_en;
+    reg      rx_fifo_reset;
+    reg      rx_fifo_write_en;
     reg [7:0]rx_fifo_data_in;
+    wire     rx_fifo_full;
 
     fifo #(
         .DATA_WIDTH(8),
@@ -63,7 +66,9 @@ module uart #(
     reg _reset = 1'b1;              // Reset signal
     reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
-    reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
+    //reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
+
+
 
     always @(posedge clock) begin
         if (!reset_done) begin

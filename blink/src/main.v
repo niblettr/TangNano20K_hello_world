@@ -31,11 +31,12 @@ module Top_module(
     /********** UART Reception **********/
     reg rx_fifo_read_en;
     reg [7:0] rx_fifo_data_out = 8'b0;
+    wire rx_fifo_empty;
     /********** SPI Slave **********/
     wire [7:0] spi_fifo_data_out;            // Data received from SPI master
     reg        spi_fifo_read_en;
     //reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master NOT USED ATM
-
+    wire spi_fifo_empty;
 /**************************************************************************************************************/
 
     // led module instantiation
@@ -56,7 +57,7 @@ module Top_module(
         .spi_fifo_data_out(spi_fifo_data_out),
         .spi_fifo_empty(spi_fifo_empty),
         .spi_fifo_read_en(spi_fifo_read_en),
-        .data_to_send(spi_data_to_send), // not used....
+        //.data_to_send(spi_data_to_send), // not used....
         .Debug_spi(Debug_spi)
     );
 

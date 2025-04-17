@@ -4,7 +4,7 @@ module spi_slave (
     input  wire       spi_cs,         // Chip select (active low)
     input  wire       mosi,           // Master Out, Slave In
     output wire       miso,           // Master In, Slave Out
-    input  wire [7:0] data_to_send,      // Data to send back, NOT USED ATM
+    //input  wire [7:0] data_to_send,      // Data to send back, NOT USED ATM
 
     output reg  [7:0] spi_fifo_data_out,
     input  wire       spi_fifo_read_en,
@@ -18,6 +18,7 @@ module spi_slave (
     reg [2:0] bit_count = 3'b0;       // Bit counter
     reg [7:0] miso_reg = 8'b0;        // Register to hold data for transmission
 
+    wire spi_fifo_full;
     reg spi_fifo_reset         = 1'b0;
     reg spi_fifo_write_en      = 1'b0;
     reg [7:0] spi_fifo_data_in = 8'b0;
@@ -74,7 +75,7 @@ module spi_slave (
        spi_fifo_write_en <= 1'b0;             // Deassert write enable WORKS!!!!!!!!!!!!!!!!!!!!! LINE 74
        if (spi_cs == 1'b1) begin              // Reset logic when chip select is deasserted        
           bit_count <= 3'b0;                  // Reset bit counter
-          miso_reg  <= data_to_send;          // Load full byte to transmit
+          //miso_reg  <= data_to_send;          // Load full byte to transmit
        end else begin
           if (spi_rising_edge) begin
              // Shift in data on SPI clock rising edge
@@ -82,9 +83,11 @@ module spi_slave (
              bit_count <= bit_count + 1'b1;       // Increment bit counter
              if (bit_count == 3'b111) begin
                 // When a full byte is received
-                spi_fifo_write_en <= 1'b1;                  // Enable write to FIFO
-                spi_fifo_data_in <= {shift_reg[6:0], mosi}; // Latch full byte into FIFO
-                Debug_spi <= ~Debug_spi;                    // Toggle debug signal
+                if(!spi_fifo_full) begin
+                   spi_fifo_write_en <= 1'b1;                  // Enable write to FIFO
+                   spi_fifo_data_in <= {shift_reg[6:0], mosi}; // Latch full byte into FIFO
+                   Debug_spi <= ~Debug_spi;                    // Toggle debug signal
+                end
              end else begin
                 //spi_fifo_write_en <= 1'b0;                  // Deassert write enable DOES NOT WORK LINE 90
              end
