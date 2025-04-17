@@ -34,7 +34,6 @@ module Top_module(
     /********** SPI Slave **********/
     wire [7:0] spi_fifo_data_out;            // Data received from SPI master
     reg        spi_fifo_read_en;
-
     //reg [7:0] spi_data_to_send = 8'b0; // Data to send back to SPI master NOT USED ATM
 
 /**************************************************************************************************************/
@@ -83,7 +82,7 @@ module Top_module(
 /****************************************************************************************************/
 // test statemachine just for printing "Test" string out the uart
 /*
-reg [2:0] uart_tx_state  = 3'b000; // State machine for UART string transmission
+reg [2:0]  uart_tx_state  = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
 always @(posedge clock) begin
 
@@ -91,8 +90,8 @@ always @(posedge clock) begin
         3'b000: begin
            if (uart_string_index < uart_string_len) begin
               tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
-              tx_fifo_write_en <= 1'b1;                             // Trigger UART transmission
-              uart_string_index <= uart_string_index + 1'b1;  // Move to the next character
+              tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
+              uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
               uart_tx_state <= 3'b010;
            end else begin
               uart_string_index <= 1'b0;     // reset index
@@ -100,19 +99,18 @@ always @(posedge clock) begin
            end
         end
         3'b010: begin
-           tx_fifo_write_en <= 1'b0;          // Deassert start signal one clock cycle later
+           tx_fifo_write_en <= 1'b0;         // Deassert start signal one clock cycle later
            uart_tx_state <= 3'b000;          // move back to start
         end
 
         3'b011: begin
-            tx_fifo_write_en <= 1'b0;   // Deassert start signal
+            tx_fifo_write_en <= 1'b0;            // Deassert start signal
             if(wait_delay == 32'd2700000) begin  // 100ms
-                wait_delay <= 32'b0; // Reset wait delay
-                uart_tx_state <= 3'b000; // Go back to the first state
+                wait_delay <= 32'b0;             // Reset wait delay
+                uart_tx_state <= 3'b000;         // Go back to the first state
             end else begin
                 wait_delay <= wait_delay + 1'b1; // Increment wait delay
             end
-
         end
     endcase
 end

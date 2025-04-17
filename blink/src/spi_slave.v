@@ -86,7 +86,7 @@ module spi_slave (
                 spi_fifo_data_in <= {shift_reg[6:0], mosi}; // Latch full byte into FIFO
                 Debug_spi <= ~Debug_spi;                    // Toggle debug signal
              end else begin
-                spi_fifo_write_en <= 1'b0;                  // Deassert write enable DOES NOT WORK LINE 90
+                //spi_fifo_write_en <= 1'b0;                  // Deassert write enable DOES NOT WORK LINE 90
              end
           end
           if (spi_falling_edge) begin
