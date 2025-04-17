@@ -17,7 +17,7 @@ module Top_module(
     parameter HALF_PERIOD     = 100;       // Adjust for desired speed
     parameter integer LED_COUNT_DELAY = ((CLOCK_FREQUENCY / 1000) * HALF_PERIOD) - 1;
 
-    parameter BAUD_RATE = 115200;
+    parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higer)
 
     /********** UART debug String **********/
     reg [7:0] uart_string [0:6] = {"H", "t", "e", "s", "t", 13, 10}; // "Test\r\n"
@@ -129,19 +129,18 @@ always @(posedge clock) begin
 
 // Echo SPI received data back over the uart
    if (spi_data_ready && !spi_data_processed) begin
-      TopLevelDebug <= ~TopLevelDebug; 
-      tx_fifo_data_in <= spi_rx_data;    // Load SPI data into UART FIFO
-      spi_read_ack <= 1'b1;              // Acknowledge SPI data, clears spi_data_ready in SPI module
-      tx_fifo_write_en <= 1'b1;          // Trigger UART transmission
-      spi_data_processed <= 1'b1;        // Mark data as processed
+      tx_fifo_data_in <= spi_rx_data;         // Load SPI data into UART FIFO
+      spi_read_ack <= 1'b1;                   // Acknowledge SPI data, clears spi_data_ready in SPI module
+      tx_fifo_write_en <= 1'b1;               // Trigger UART transmission
+      spi_data_processed <= 1'b1;             // Mark data as processed
    end
    if (!spi_data_ready) begin
-      spi_data_processed <= 1'b0;        // Reset flag when no data is ready
+      spi_data_processed <= 1'b0;             // Reset flag when no data is ready
    end
 
 // Echo Uart RX data back out the Uart TX using the fifo
     if (!rx_fifo_empty && !rx_fifo_read_en) begin // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
-        rx_fifo_read_en <= 1'b1;           // Assert read enable to read from RX FIFO
+        rx_fifo_read_en <= 1'b1;              // Assert read enable to read from RX FIFO
         tx_fifo_write_en <= 1'b1;
         tx_fifo_data_in <= rx_fifo_data_out;  // Load RX FIFO data into UART TX
     end
@@ -149,8 +148,8 @@ end
 
 
 /********** Continuous Assignment **********/
-//assign Debug_Pin = tx_fifo_write_en;
+assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
-assign Debug_Pin = TopLevelDebug;
+//assign Debug_Pin = TopLevelDebug;
 
 endmodule

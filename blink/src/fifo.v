@@ -14,24 +14,19 @@ module fifo #(
 );
 
     // Internal signals
-    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1]; // Memory array for the FIFO
+    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];   // Memory array for the FIFO
     reg [$clog2(DEPTH)-1:0] write_ptr = 0;  // Write pointer
-    reg [$clog2(DEPTH):0] read_ptr = 0;   // Read pointer
-    reg [$clog2(DEPTH):0] count = 0;    // Count of elements in the FIFO
+    reg [$clog2(DEPTH):0] read_ptr = 0;     // Read pointer
+    reg [$clog2(DEPTH):0] count = 0;        // Count of elements in the FIFO
 
     // Write operation
     always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            //Debug_fifo <= ~Debug_fifo; // I think I see this but it does it twice???? FFS!!!!
-            write_ptr <= 0;
+        if (reset) begin           
+           write_ptr <= 0;
         end else if (write_en && !full) begin
-            //Debug_fifo <= ~Debug_fifo; // yes, we can see this!
-            if (data_in == 8'h48) begin // ASCII value for 'H'
-               //Debug_fifo <= ~Debug_fifo;
-            end
-            mem[write_ptr] <= data_in;       // Write data to memory
-            write_ptr <= write_ptr + 1'b1;  // Increment write pointer
-            // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
+           mem[write_ptr] <= data_in;       // Write data to memory
+           write_ptr <= write_ptr + 1'b1;  // Increment write pointer
+           // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
         end
     end
 
@@ -42,6 +37,7 @@ module fifo #(
         end else if (read_en && !empty) begin
             read_ptr <= read_ptr + 1'b1;    // Increment read pointer
             //or read_ptr <= (read_ptr + 1'b1) % DEPTH;    // Increment read pointer
+            Debug_fifo <= ~Debug_fifo;
         end
     end
 
@@ -53,14 +49,14 @@ module fifo #(
             case ({write_en && !full, read_en && !empty})
                 2'b10: count <= count + 1'b1; // Write only
                 2'b01: count <= count - 1'b1; // Read only
-                default: count <= count;     // No change
+                default: count <= count;      // No change
             endcase
         end
     end
 
     // Output assignments
-    assign data_out = mem[read_ptr];       // Data output
-    assign full = (count == DEPTH);        // Full flag
-    assign empty = (count == 0);           // Empty flag
+    assign data_out = mem[read_ptr];
+    assign full = (count == DEPTH);
+    assign empty = (count == 0);
 
 endmodule
