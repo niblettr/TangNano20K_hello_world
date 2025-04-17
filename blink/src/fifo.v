@@ -60,7 +60,7 @@ module fifo #(
         if (reset) begin
             count <= 0;
         end else begin
-            case ({write_en && !write_en_d && !full, read_en && !read_en_d&& !empty})
+            case ({write_en && !write_en_d && !full, read_en && !read_en_d && !empty})
                 2'b10: count <= count + 1'b1; // Write only
                 2'b01: count <= count - 1'b1; // Read only
                 default: count <= count;      // No change
