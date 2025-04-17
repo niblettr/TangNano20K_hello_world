@@ -1,5 +1,5 @@
 module spi_slave (
-    input  wire       system_clk,     // System clock
+    input  wire       clock,     // System clock
     input  wire       spi_clk,        // SPI clock (from master)
     input  wire       spi_cs,         // Chip select (active low)
     input  wire       mosi,           // Master Out, Slave In
@@ -19,7 +19,7 @@ module spi_slave (
     // Synchronize SPI clock into system clock domain
     reg spi_clk_sync1, spi_clk_sync2, spi_clk_sync3;
 
-    always @(posedge system_clk) begin
+    always @(posedge clock) begin
         spi_clk_sync1 <= spi_clk;
         spi_clk_sync2 <= spi_clk_sync1;
         spi_clk_sync3 <= spi_clk_sync2;
@@ -29,7 +29,7 @@ module spi_slave (
     wire spi_falling_edge = (spi_clk_sync3 == 1'b1) && (spi_clk_sync2 == 1'b0);
 
     // SPI communication logic
-    always @(posedge system_clk) begin
+    always @(posedge clock) begin
         if (spi_cs == 1'b1) begin
             // SPI not active — reset internal state
             bit_count       <= 3'b0;

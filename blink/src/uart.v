@@ -2,7 +2,7 @@ module uart #(
     parameter CLOCK_FREQUENCY = 27000000, // System clock frequency in Hz
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
-    input       clk,                      // System clock
+    input       clock,                      // System clock
     output reg  uart_tx_pin,
     input       uart_rx_pin,
     output reg  Debug_uart,               // Routed to pin in top module, for debug purposes...
@@ -31,7 +31,7 @@ module uart #(
         .DATA_WIDTH(8),
         .DEPTH(64)
     ) fifo_tx_inst (
-        .clk(clk),
+        .clock(clock),
         .reset(tx_fifo_reset),
         .write_en(tx_fifo_write_en),
         .read_en(tx_fifo_read_en),
@@ -46,7 +46,7 @@ module uart #(
         .DATA_WIDTH(8),
         .DEPTH(64)
     ) fifo_rx_inst (
-        .clk(clk),
+        .clock(clock),
         .reset(rx_fifo_reset),
         .write_en(rx_fifo_write_en),
         .read_en(rx_fifo_read_en),
@@ -65,7 +65,7 @@ module uart #(
 
     reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if (!reset_done) begin
             if (reset_counter < 4'd10) begin
                 reset_counter <= reset_counter + 1'b1;
@@ -90,7 +90,7 @@ module uart #(
     reg transmitting = 1'b0;                 // Indicates if UART is currently transmitting
 
     // UART Transmit Logic
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         tx_fifo_read_en <= 1'b0;                        // Deassert read enable
 
         if (!transmitting && !tx_fifo_empty) begin
@@ -131,12 +131,12 @@ module uart #(
     reg uart_rx_pin_sync1, uart_rx_pin_sync2;  // Synchronize uart_rx_pin to the clock domain
 
     // Synchronize uart_rx_pin to the clock domain
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
     end
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
     if (!receiving && !uart_rx_pin_sync2) begin
         // Start bit detected
         receiving <= 1'b1;

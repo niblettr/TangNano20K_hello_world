@@ -43,12 +43,12 @@ module Top_module(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .LED_COUNT_DELAY(LED_COUNT_DELAY)
     ) led_scroll_inst (
-        .system_clk(clock),
+        .clock(clock),
         .leds(leds)
     );
 
     spi_slave spi_inst (
-        .system_clk(clock),
+        .clock(clock),
         .spi_clk(SPI_SCK),
         .spi_cs(SPI_CS),
         .mosi(SPI_MOSI),
@@ -64,7 +64,7 @@ module Top_module(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
         .BAUD_RATE(BAUD_RATE)
     ) uart_inst (
-        .clk(clock),
+        .clock(clock),
         .tx_fifo_data_in(tx_fifo_data_in),
         .uart_tx_pin(Uart_TX_Pin),
         //.tx_fifo_empty(tx_fifo_empty),
@@ -84,7 +84,7 @@ module Top_module(
 /*
 reg [2:0] uart_tx_state  = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
-always @(posedge Clock) begin
+always @(posedge clock) begin
 
     case (uart_tx_state)
         3'b000: begin

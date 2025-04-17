@@ -2,7 +2,7 @@ module fifo #(
     parameter DATA_WIDTH = 8,  // Width of the data
     parameter DEPTH = 16       // Depth of the FIFO (number of entries)
 )(
-    input                   clk,        // Clock signal
+    input                   clock,        // Clock signal
     input                   reset,      // Reset signal (active high)
     input                   write_en,   // Write enable
     input                   read_en,    // Read enable
@@ -20,7 +20,7 @@ module fifo #(
     reg [$clog2(DEPTH):0] count = 0;        // Count of elements in the FIFO
 
     // Write operation
-    always @(posedge clk or posedge reset) begin
+    always @(posedge clock or posedge reset) begin
         if (reset) begin           
            write_ptr <= 0;
         end else if (write_en && !full) begin
@@ -31,7 +31,7 @@ module fifo #(
     end
 
     // Read operation
-    always @(posedge clk or posedge reset) begin
+    always @(posedge clock or posedge reset) begin
         if (reset) begin
             read_ptr <= 0;
         end else if (read_en && !empty) begin
@@ -42,7 +42,7 @@ module fifo #(
     end
 
     // Count management
-    always @(posedge clk or posedge reset) begin
+    always @(posedge clock or posedge reset) begin
         if (reset) begin
             count <= 0;
         end else begin

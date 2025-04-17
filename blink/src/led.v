@@ -2,7 +2,7 @@ module led_scroll #(
     parameter CLOCK_FREQUENCY = 27000000, // System clock frequency in Hz
     parameter LED_COUNT_DELAY     = 1000 // some crap default 
 )(
-    input        system_clk,     // System clock
+    input        clock,     // System clock
     output [5:0] leds
 );
 
@@ -17,7 +17,7 @@ module led_scroll #(
     /****************************************************************************************************/
     // LED handling
     
-    always @(posedge system_clk) begin
+    always @(posedge clock) begin
         // Counter for delay
         if (count_value_reg < LED_COUNT_DELAY) begin
             count_value_reg <= count_value_reg + 1'b1; // Increment counter
