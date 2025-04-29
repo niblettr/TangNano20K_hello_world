@@ -19,7 +19,7 @@ module Top_module(
     parameter HALF_PERIOD     = 100;       // Adjust for desired speed
     parameter integer LED_COUNT_DELAY = ((CLOCK_FREQUENCY / 1000) * HALF_PERIOD) - 1;
 
-    parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higer)
+    parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
     /********** UART debug String **********/
     reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
@@ -85,7 +85,7 @@ module Top_module(
 
 /****************************************************************************************************/
 // test statemachine just for printing "Test" string out the uart
-
+/*
 reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
 always @(posedge clock) begin
@@ -119,7 +119,7 @@ always @(posedge clock) begin
     endcase
 end
 
-
+*/
 /*****************************************************************************************/
 /*
 reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
@@ -157,7 +157,7 @@ end
 
 
 
-/*
+
     // Define FSM states with meaningful names
     typedef enum logic [2:0] {
         STATE_IDLE   = 3'b000,
@@ -176,12 +176,43 @@ reg [2:0] command_index = 0;               // Index for the command buffer
 reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
 
 reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
+reg uart_tx_process        = 1'b0;
+
+reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 
 always @(posedge clock) begin
     // Default assignments
     rx_fifo_read_en <= 1'b0;         // Deassert UART RX FIFO read enable
     //tx_fifo_write_en <= 1'b0;        // Deassert UART TX FIFO write enable
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    case (uart_tx_state)
+        3'b000: begin
+            if (uart_tx_process) begin
+               uart_tx_state <= 3'b001;
+            end
+        end // case
+
+        3'b001: begin
+            if (uart_string_index < uart_string_len) begin
+               tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
+               tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
+               uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
+               uart_tx_state <= 3'b011;
+             end else begin
+               uart_string_index <= 1'b0;     // reset index
+               uart_tx_process <= 1'b0;
+               uart_tx_state <= 3'b000;
+             end
+        end
+        
+        3'b011: begin
+           tx_fifo_write_en <= 1'b0;         // Deassert start signal one clock cycle later
+           uart_tx_state <= 3'b001;          // move back to start
+        end
+
+    endcase
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
     case (command_state)
         STATE_IDLE: begin
             // Idle state: Wait for data in RX FIFO
@@ -197,6 +228,7 @@ always @(posedge clock) begin
                     //TopLevelDebug <= ~TopLevelDebug;
                 end else begin
                    command_index <= command_index + 1'b1; // Increment buffer index
+                   //TopLevelDebug <= ~TopLevelDebug;
                 end
             end else if (rx_fifo_empty) begin
               uart_rx_previous_empty <= 1'b1;
@@ -204,7 +236,6 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE: begin
-            //// Command processing state
             if (command_buffer[0] == 8'h54 && command_buffer[1] == 8'h45 && command_buffer[2] == 8'h53 && command_buffer[3] == 8'h54) begin // Example: Command "TEST" 54 45 53 54
                command_state <= STATE_PASS;
             end else begin
@@ -213,12 +244,16 @@ always @(posedge clock) begin
         end // case
 
         STATE_PASS: begin
+           uart_tx_process <= 1'b1;
+           uart_string [0:5] = {"P", "a", "s", "s", 13, 10};
            TopLevelDebug <= ~TopLevelDebug;
            command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
            TopLevelDebug2 <= ~TopLevelDebug2;
+           uart_tx_process <= 1'b1;
+           uart_string [0:5] = {"F", "a", "i", "l", 13, 10};
            command_state <= STATE_IDLE;
         end
 
@@ -227,7 +262,7 @@ always @(posedge clock) begin
         end
     endcase
 end
-*/
+
 
 /********** Continuous Assignment **********/
 assign Debug_clock_pin = TopLevelDebug2;

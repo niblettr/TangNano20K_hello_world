@@ -23,9 +23,14 @@ module fifo #(
     reg write_en_d = 1;
 
     // Capture previous state of read_en & write_en
-    always @(posedge clock ) begin
+    always @(posedge clock or posedge reset) begin
+        if (reset) begin
+            read_en_d  <= 1'b0;
+            write_en_d <= 1'b0;
+        end else begin
             read_en_d  <= read_en;
             write_en_d <= write_en;
+        end
     end
 
     // Write operation
@@ -33,7 +38,6 @@ module fifo #(
         if (reset) begin           
            write_ptr <= 0;
         end else if (write_en && !write_en_d && !full) begin
-           //Debug_fifo <=1;
            mem[write_ptr] <= data_in;       // Write data to memory
            write_ptr <= write_ptr + 1'b1;  // Increment write pointer
            // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
@@ -46,20 +50,21 @@ module fifo #(
             read_ptr <= 0;
         end else if (read_en && !read_en_d && !empty) begin
             read_ptr <= read_ptr + 1'b1;    // Increment read pointer
-            //Debug_fifo <=1;
             //or read_ptr <= (read_ptr + 1'b1) % DEPTH;    // Increment read pointer
-            //Debug_fifo <= ~Debug_fifo;
+            Debug_fifo <= ~Debug_fifo;
         end
     end
 
     // Count management
-    always @(posedge clock) begin
-        if(write_en && !write_en_d && !full) begin
-            count <= count + 1'b1;
-            //Debug_fifo <=1;         // executes on startup! HOW?????????
-        end else if (read_en && !read_en_d && !empty) begin
-            count <= count - 1'b1;
-            //Debug_fifo <=1;         // also executes on startup! HOW?????????
+    always @(posedge clock or posedge reset) begin
+        if (reset) begin
+            count <= 0;
+        end else begin
+            case ({write_en && !write_en_d && !full, read_en && !read_en_d && !empty})
+                2'b10: count <= count + 1'b1; // Write only
+                2'b01: count <= count - 1'b1; // Read only
+                default: count <= count;      // No change
+            endcase
         end
     end
 
@@ -67,5 +72,5 @@ module fifo #(
     assign data_out = mem[read_ptr];
     assign full = (count == DEPTH);
     assign empty = (count == 0);
-    //assign Debug_fifo = count;
+
 endmodule
