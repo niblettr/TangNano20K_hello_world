@@ -9,6 +9,7 @@ module uart #(
 
     input [7:0] tx_fifo_data_in,
     input       tx_fifo_write_en,
+
     output reg  rx_fifo_empty,    
     output reg  [7:0] rx_fifo_data_out,
     input       rx_fifo_read_en
@@ -69,7 +70,7 @@ module uart #(
     //reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
 
 
-
+/*
     always @(posedge clock) begin
         if (!reset_done) begin
             if (reset_counter < 4'd10) begin
@@ -82,10 +83,11 @@ module uart #(
                 reset_done <= 1'b1;    // Latch that reset is done
                 rx_fifo_reset <= 1'b0;
                 tx_fifo_reset <= 1'b0;
+                //Debug_uart <= ~Debug_uart;
             end
         end
     end
-
+*/
 
 
     // Internal registers for transmission
@@ -96,7 +98,11 @@ module uart #(
 
     // UART Transmit Logic
     always @(posedge clock) begin
-        tx_fifo_read_en <= 1'b0;                        // Deassert read enable
+        tx_fifo_read_en <= 1'b0;                           // Deassert read enable
+
+        if (!transmitting) begin
+           uart_tx_pin = 1'b1;                             // idle High
+        end
 
         if (!transmitting && !tx_fifo_empty) begin
            //Debug_uart <= ~Debug_uart;
@@ -133,7 +139,8 @@ module uart #(
     reg [7:0]  rx_shift_reg = 8'b0;            // Shift register for receiving data
     reg        receiving = 1'b0;               // Indicates if UART is currently receiving
 
-    reg uart_rx_pin_sync1, uart_rx_pin_sync2;  // Synchronize uart_rx_pin to the clock domain
+    reg uart_rx_pin_sync1 = 1;
+    reg uart_rx_pin_sync2 = 1;  //Synchronize uart_rx_pin to the clock domain
 
     // Synchronize uart_rx_pin to the clock domain
     always @(posedge clock) begin
@@ -142,7 +149,7 @@ module uart #(
     end
 
     always @(posedge clock) begin
-    if (!receiving && !uart_rx_pin_sync2) begin
+    if (!receiving && !uart_rx_pin_sync2 ) begin
         // Start bit detected
         receiving <= 1'b1;
         rx_baud_counter <= BAUD_DIVISOR / 2; // Start sampling in the middle of the start bit
@@ -152,6 +159,7 @@ module uart #(
     if (receiving) begin
         if (rx_baud_counter < BAUD_DIVISOR - 1) begin
             rx_baud_counter <= rx_baud_counter + 1'b1;
+            
         end else begin
             rx_baud_counter <= 0;            
             if (rx_bit_index >= 1 && rx_bit_index <= 8) begin
@@ -162,8 +170,10 @@ module uart #(
             rx_bit_index <= rx_bit_index + 1'b1;
 
             if (rx_bit_index == 9) begin
+               
                // Stop bit received, validate it
                if (uart_rx_pin_sync2 && !rx_fifo_full) begin
+                  //Debug_uart <= 1;
                   rx_fifo_write_en <= 1'b1;          // Enable write to FIFO
                   rx_fifo_data_in <= rx_shift_reg;   // Write received data to FIFO
                end

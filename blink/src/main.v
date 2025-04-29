@@ -11,7 +11,8 @@ module Top_module(
     output Debug_clock_pin // Debug toggle                  Pin29
 );
 
-    reg TopLevelDebug = 0;
+    reg TopLevelDebug  = 0;
+    reg TopLevelDebug2 = 0;
 
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
@@ -21,8 +22,8 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higer)
 
     /********** UART debug String **********/
-    reg [7:0] uart_string [0:6] = {"H", "t", "e", "s", "t", 13, 10}; // "Test\r\n"
-    parameter uart_string_len   = 7;
+    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10};
+    parameter uart_string_len   = 6;
     reg [3:0] uart_string_index = 0; // Index for string transmission
 
 
@@ -80,39 +81,44 @@ module Top_module(
         .Debug_uart(Debug_uart)
     );
 
-/*
+
+
 /****************************************************************************************************/
 // test statemachine just for printing "Test" string out the uart
-/*
-reg [2:0]  uart_tx_state  = 3'b000; // State machine for UART string transmission
-reg [32:0] wait_delay = 32'b0;
-always @(posedge clock) begin
 
+reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
+reg [32:0] wait_delay = 32'b0;
+/*
+always @(posedge clock) begin
     case (uart_tx_state)
         3'b000: begin
-           if (uart_string_index < uart_string_len) begin
-              tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
-              tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
-              uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
-              uart_tx_state <= 3'b010;
-           end else begin
-              uart_string_index <= 1'b0;     // reset index
-              uart_tx_state <= 3'b011;       // Move to the wait state
-           end
-        end
-        3'b010: begin
-           tx_fifo_write_en <= 1'b0;         // Deassert start signal one clock cycle later
-           uart_tx_state <= 3'b000;          // move back to start
+            // Transmit all characters in the string
+            if (uart_string_index < uart_string_len) begin
+                if (tx_fifo_write_en == 1'b0) begin // Wait for write enable to be deasserted
+                    tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
+                    tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
+                    uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
+                end else begin
+                    tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
+                end
+            end else begin
+                uart_string_index <= 1'b0;     // Reset index
+                uart_tx_state <= 3'b01;       // Move to the wait state
+            end
         end
 
-        3'b011: begin
-            tx_fifo_write_en <= 1'b0;            // Deassert start signal
-            if(wait_delay == 32'd2700000) begin  // 100ms
+        3'b001: begin
+            // Wait state for 100ms
+            if (wait_delay == 32'd2700000) begin // 100ms delay
                 wait_delay <= 32'b0;             // Reset wait delay
                 uart_tx_state <= 3'b000;         // Go back to the first state
             end else begin
                 wait_delay <= wait_delay + 1'b1; // Increment wait delay
             end
+        end
+
+        default: begin
+            //uart_tx_state <= 3'b000; // Default to idle state
         end
     endcase
 end
@@ -120,6 +126,8 @@ end
 
 /*****************************************************************************************/
 
+reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
+reg spi_rx_processing = 1'b0; // Flag to track if RX processing is in progress
 always @(posedge clock) begin
     // Default assignments
     spi_fifo_read_en <= 1'b0;         // Deassert SPI FIFO read enable
@@ -127,25 +135,108 @@ always @(posedge clock) begin
     tx_fifo_write_en <= 1'b0;         // Deassert UART TX FIFO write enable
 
     // Echo SPI received data back over the UART
-    if (!spi_fifo_empty && !spi_fifo_read_en) begin
+
+    if (!spi_fifo_empty && !spi_rx_processing) begin
+       //TopLevelDebug <= ~TopLevelDebug;
        spi_fifo_read_en <= 1'b1;                // Assert read enable to read from SPI FIFO
        tx_fifo_write_en <= 1'b1;                // Trigger UART transmission
+       spi_rx_processing <= 1'b1;                  // Set processing flag
        tx_fifo_data_in <= spi_fifo_data_out;    // Load SPI FIFO data into UART TX FIFO
-   end
+    end else if (spi_fifo_empty) begin
+        spi_rx_processing <= 1'b0;                  // Clear processing flag when FIFO is empty
+    end
 
     // Echo Uart RX data back out the Uart TX using the fifo
-    if (!rx_fifo_empty && !rx_fifo_read_en) begin  // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
+    if (!rx_fifo_empty && !uart_rx_processing) begin  // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
+        //TopLevelDebug <= ~TopLevelDebug;
         rx_fifo_read_en  <= 1'b1;                  // Assert read enable to read from RX FIFO
         tx_fifo_write_en <= 1'b1;
+        uart_rx_processing <= 1'b1;                  // Set processing flag
         tx_fifo_data_in <= rx_fifo_data_out;       // Load RX FIFO data into UART TX
+    end else if (rx_fifo_empty) begin
+        uart_rx_processing <= 1'b0;                  // Clear processing flag when FIFO is empty
     end
 end
 
 
+
+
+/*
+    // Define FSM states with meaningful names
+    typedef enum logic [2:0] {
+        STATE_IDLE   = 3'b000,
+        STATE_PARSE  = 3'b001,
+        STATE_WAIT   = 3'b010,
+        STATE_PASS   = 3'b011,
+        STATE_FAIL   = 3'b100
+    } state_t;
+
+
+// Parameters for command handling
+
+parameter CMD_LENGTH = 4; // Number of bytes in a command
+reg [7:0] command_buffer [0:CMD_LENGTH-1]; // Buffer to store the command
+reg [2:0] command_index = 0;               // Index for the command buffer
+reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
+
+reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
+
+always @(posedge clock) begin
+    // Default assignments
+    rx_fifo_read_en <= 1'b0;         // Deassert UART RX FIFO read enable
+    //tx_fifo_write_en <= 1'b0;        // Deassert UART TX FIFO write enable
+
+    case (command_state)
+        STATE_IDLE: begin
+            // Idle state: Wait for data in RX FIFO
+            if (!rx_fifo_empty && uart_rx_previous_empty) begin
+                uart_rx_previous_empty <= 1'b0;
+                rx_fifo_read_en <= 1'b1; // Read from RX FIFO
+                command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
+
+
+                if (command_index == CMD_LENGTH -1 ) begin
+                    command_index <= 3'b0;        // reset to zero
+                    command_state <= STATE_PARSE; // Move to command processing state
+                    //TopLevelDebug <= ~TopLevelDebug;
+                end else begin
+                   command_index <= command_index + 1'b1; // Increment buffer index
+                end
+            end else if (rx_fifo_empty) begin
+              uart_rx_previous_empty <= 1'b1;
+            end
+        end
+
+        STATE_PARSE: begin
+            //// Command processing state
+            if (command_buffer[0] == 8'h54 && command_buffer[1] == 8'h45 && command_buffer[2] == 8'h53 && command_buffer[3] == 8'h54) begin // Example: Command "TEST" 54 45 53 54
+               command_state <= STATE_PASS;
+            end else begin
+              command_state <= STATE_FAIL;
+            end
+        end // case
+
+        STATE_PASS: begin
+           TopLevelDebug <= ~TopLevelDebug;
+           command_state <= STATE_IDLE;
+        end
+
+        STATE_FAIL: begin
+           TopLevelDebug2 <= ~TopLevelDebug2;
+           command_state <= STATE_IDLE;
+        end
+
+        default: begin
+            command_state <= STATE_IDLE; // Reset to idle state
+        end
+    endcase
+end
+*/
+
 /********** Continuous Assignment **********/
-assign Debug_clock_pin = clock;
+assign Debug_clock_pin = TopLevelDebug2;
 //assign Debug_Pin = Debug_uart;
-assign Debug_Pin = Debug_spi;
-//assign Debug_Pin = TopLevelDebug;
+//assign Debug_Pin = Debug_spi;
+assign Debug_Pin = TopLevelDebug;
 
 endmodule
