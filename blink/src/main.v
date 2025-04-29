@@ -88,8 +88,10 @@ module Top_module(
 
 reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
-/*
+reg uart_tx_processing = 1'b0; // Flag to track if RX processing is in progress
+
 always @(posedge clock) begin
+    tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
     case (uart_tx_state)
         3'b000: begin
             // Transmit all characters in the string
@@ -99,7 +101,7 @@ always @(posedge clock) begin
                     tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
                     uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
                 end else begin
-                    tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
+                    //tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
                 end
             end else begin
                 uart_string_index <= 1'b0;     // Reset index
@@ -122,10 +124,10 @@ always @(posedge clock) begin
         end
     endcase
 end
-*/
+
 
 /*****************************************************************************************/
-
+/*
 reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
 reg spi_rx_processing = 1'b0; // Flag to track if RX processing is in progress
 always @(posedge clock) begin
@@ -157,7 +159,7 @@ always @(posedge clock) begin
         uart_rx_processing <= 1'b0;                  // Clear processing flag when FIFO is empty
     end
 end
-
+*/
 
 
 
