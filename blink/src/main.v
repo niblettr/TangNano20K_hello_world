@@ -96,12 +96,13 @@ always @(posedge clock) begin
         3'b000: begin
             // Transmit all characters in the string
             if (uart_string_index < uart_string_len) begin
-                if (tx_fifo_write_en == 1'b0) begin // Wait for write enable to be deasserted
+                if (!uart_tx_processing) begin // Wait for write enable to be deasserted
+                    uart_tx_processing <=1;
                     tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
                     tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
                     uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
                 end else begin
-                    //tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
+                    uart_tx_processing <= 1'b0; // Deassert write enable for the next cycle
                 end
             end else begin
                 uart_string_index <= 1'b0;     // Reset index
