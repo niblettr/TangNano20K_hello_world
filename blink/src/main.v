@@ -22,7 +22,7 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higer)
 
     /********** UART debug String **********/
-    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10};
+    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
     parameter uart_string_len   = 6;
     reg [3:0] uart_string_index = 0; // Index for string transmission
 
@@ -88,40 +88,33 @@ module Top_module(
 
 reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [32:0] wait_delay = 32'b0;
-reg uart_tx_processing = 1'b0; // Flag to track if RX processing is in progress
-
 always @(posedge clock) begin
-    tx_fifo_write_en <= 1'b0; // Deassert write enable for the next cycle
+
     case (uart_tx_state)
         3'b000: begin
-            // Transmit all characters in the string
             if (uart_string_index < uart_string_len) begin
-                if (!uart_tx_processing) begin // Wait for write enable to be deasserted
-                    uart_tx_processing <=1;
                     tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
                     tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
                     uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
+              uart_tx_state <= 3'b010;
                 end else begin
-                    uart_tx_processing <= 1'b0; // Deassert write enable for the next cycle
+              uart_string_index <= 1'b0;     // reset index
+              uart_tx_state <= 3'b011;       // Move to the wait state
                 end
-            end else begin
-                uart_string_index <= 1'b0;     // Reset index
-                uart_tx_state <= 3'b01;       // Move to the wait state
             end
+        3'b010: begin
+           tx_fifo_write_en <= 1'b0;         // Deassert start signal one clock cycle later
+           uart_tx_state <= 3'b000;          // move back to start
         end
 
-        3'b001: begin
-            // Wait state for 100ms
-            if (wait_delay == 32'd2700000) begin // 100ms delay
+        3'b011: begin
+            tx_fifo_write_en <= 1'b0;            // Deassert start signal
+            if(wait_delay == 32'd2700000) begin  // 100ms
                 wait_delay <= 32'b0;             // Reset wait delay
                 uart_tx_state <= 3'b000;         // Go back to the first state
             end else begin
                 wait_delay <= wait_delay + 1'b1; // Increment wait delay
             end
-        end
-
-        default: begin
-            //uart_tx_state <= 3'b000; // Default to idle state
         end
     endcase
 end
