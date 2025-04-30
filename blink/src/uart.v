@@ -19,14 +19,14 @@ module uart #(
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
 
     // TX FIFO
-    reg      tx_fifo_reset;
+    //reg      tx_fifo_reset;
     reg      tx_fifo_read_en;
     reg [7:0]tx_fifo_data_out;
     wire     tx_fifo_full;
     wire     tx_fifo_empty;
 
     // RX FIFO
-    reg      rx_fifo_reset;
+    //reg      rx_fifo_reset;
     reg      rx_fifo_write_en;
     reg [7:0]rx_fifo_data_in;
     wire     rx_fifo_full;
