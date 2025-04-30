@@ -19,14 +19,15 @@ module fifo #(
     reg [$clog2(DEPTH):0] read_ptr = 0;     // Read pointer
     reg [$clog2(DEPTH):0] count = 0;        // Count of elements in the FIFO
 
-    reg read_en_d  = 1;
-    reg write_en_d = 1;
+    reg read_en_d;
+    reg write_en_d;
 
     // Capture previous state of read_en & write_en
     always @(posedge clock or posedge reset) begin
         if (reset) begin
-            read_en_d  <= 1'b0;
-            write_en_d <= 1'b0;
+            read_en_d  <= 1'b1; // Initialize during reset
+            write_en_d <= 1'b1; // Initialize during reset
+            Debug_fifo <= 1'b1;
         end else begin
             read_en_d  <= read_en;
             write_en_d <= write_en;
@@ -51,7 +52,7 @@ module fifo #(
         end else if (read_en && !read_en_d && !empty) begin
             read_ptr <= read_ptr + 1'b1;    // Increment read pointer
             //or read_ptr <= (read_ptr + 1'b1) % DEPTH;    // Increment read pointer
-            Debug_fifo <= ~Debug_fifo;
+            //Debug_fifo <= ~Debug_fifo;
         end
     end
 

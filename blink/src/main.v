@@ -52,11 +52,12 @@ module Top_module(
 
     // Define FSM states with meaningful names
     typedef enum logic [2:0] {
-        STATE_IDLE   = 3'b000,
-        STATE_PARSE  = 3'b001,
-        STATE_WAIT   = 3'b010,
-        STATE_PASS   = 3'b011,
-        STATE_FAIL   = 3'b100
+        STATE_INIT   = 3'b000,
+        STATE_IDLE   = 3'b001,
+        STATE_PARSE  = 3'b010,
+        STATE_WAIT   = 3'b011,
+        STATE_PASS   = 3'b100,
+        STATE_FAIL   = 3'b101
     } state_t;
 
 
@@ -107,6 +108,10 @@ always @(posedge clock) begin
     endcase
 
     case (command_state)
+        STATE_INIT: begin // we want to reset fifo here then move on..
+           
+           command_state <= STATE_IDLE;
+        end
         STATE_IDLE: begin
             // Idle state: Wait for data in RX FIFO
             if (!rx_fifo_empty && uart_rx_previous_empty) begin
@@ -157,11 +162,29 @@ always @(posedge clock) begin
     endcase
 end
 
+/*
+reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
+always @(posedge clock) begin
+    // Default assignments
+    rx_fifo_read_en  <= 1'b0;         // Deassert UART RX FIFO read enable
+    tx_fifo_write_en <= 1'b0;         // Deassert UART TX FIFO write enable
+
+    // Echo Uart RX data back out the Uart TX using the fifo
+    if (!rx_fifo_empty && !uart_rx_processing) begin  // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
+        rx_fifo_read_en  <= 1'b1;                  // Assert read enable to read from RX FIFO
+        tx_fifo_write_en <= 1'b1;
+        uart_rx_processing <= 1'b1;                  // Set processing flag
+        tx_fifo_data_in <= rx_fifo_data_out;       // Load RX FIFO data into UART TX
+    end else if (rx_fifo_empty) begin
+        uart_rx_processing <= 1'b0;                  // Clear processing flag when FIFO is empty
+    end
+end
+*/
 
 /********** Continuous Assignment **********/
 assign Debug_clock_pin = TopLevelDebug2;
-//assign Debug_Pin = Debug_uart;
+assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
-assign Debug_Pin = TopLevelDebug;
+//assign Debug_Pin = TopLevelDebug;
 
 endmodule

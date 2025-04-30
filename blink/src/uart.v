@@ -19,14 +19,14 @@ module uart #(
     localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
 
     // TX FIFO
-    //reg      tx_fifo_reset;
+    reg      tx_fifo_reset;
     reg      tx_fifo_read_en;
     reg [7:0]tx_fifo_data_out;
     wire     tx_fifo_full;
     wire     tx_fifo_empty;
 
     // RX FIFO
-    //reg      rx_fifo_reset;
+    reg      rx_fifo_reset;
     reg      rx_fifo_write_en;
     reg [7:0]rx_fifo_data_in;
     wire     rx_fifo_full;
@@ -63,31 +63,31 @@ module uart #(
 
 
     // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
-    reg [3:0] reset_counter = 4'b0; // 4-bit counter for reset delay
+    reg [1:0] reset_counter = 4'b0; // 1-bit counter for reset delay
     reg _reset = 1'b1;              // Reset signal
     reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
     //reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
 
 
-/*
+
     always @(posedge clock) begin
         if (!reset_done) begin
-            if (reset_counter < 4'd10) begin
+            if (reset_counter < 4'd1) begin
                 reset_counter <= reset_counter + 1'b1;
                 _reset <= 1'b1; // Keep reset asserted
                 rx_fifo_reset <= 1'b1;
                 tx_fifo_reset <= 1'b1;
+                //Debug_uart <= 1'b1;
             end else begin
                _reset <= 1'b0;        // Deassert reset after 10 clock cycles
                 reset_done <= 1'b1;    // Latch that reset is done
                 rx_fifo_reset <= 1'b0;
                 tx_fifo_reset <= 1'b0;
-                //Debug_uart <= ~Debug_uart;
             end
         end
     end
-*/
+
 
 
     // Internal registers for transmission
