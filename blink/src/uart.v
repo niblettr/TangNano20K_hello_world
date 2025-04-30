@@ -6,6 +6,7 @@ module uart #(
     output reg  uart_tx_pin,
     input       uart_rx_pin,
     output reg  Debug_uart,               // Routed to pin in top module, for debug purposes...
+    output reg  Debug_uart2,               // Routed to pin in top module, for debug purposes...
 
     input [7:0] tx_fifo_data_in,
     input       tx_fifo_write_en,
@@ -78,7 +79,7 @@ module uart #(
                 _reset <= 1'b1; // Keep reset asserted
                 rx_fifo_reset <= 1'b1;
                 tx_fifo_reset <= 1'b1;
-                //Debug_uart <= 1'b1;
+                //Debug_uart <= 1'b0;
             end else begin
                _reset <= 1'b0;        // Deassert reset after 10 clock cycles
                 reset_done <= 1'b1;    // Latch that reset is done

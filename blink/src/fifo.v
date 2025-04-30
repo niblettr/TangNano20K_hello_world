@@ -10,7 +10,8 @@ module fifo #(
     output [DATA_WIDTH-1:0] data_out,   // Data read from the FIFO
     output                  full,       // FIFO full flag
     output                  empty,      // FIFO empty flag
-    output reg              Debug_fifo
+    output reg              Debug_fifo,
+    output reg              Debug_fifo2
 );
 
     // Internal signals
@@ -22,29 +23,40 @@ module fifo #(
     reg read_en_d;
     reg write_en_d;
 
+    /*******************************************************************************************/
     // Capture previous state of read_en & write_en
     always @(posedge clock or posedge reset) begin
         if (reset) begin
             read_en_d  <= 1'b1; // Initialize during reset
             write_en_d <= 1'b1; // Initialize during reset
-            Debug_fifo <= 1'b1;
+            //Debug_fifo <= 1'b1;
         end else begin
             read_en_d  <= read_en;
             write_en_d <= write_en;
         end
     end
 
+    /*******************************************************************************************/
     // Write operation
     always @(posedge clock or posedge reset) begin
+
         if (reset) begin           
            write_ptr <= 0;
+           Debug_fifo <= 1'b0;
         end else if (write_en && !write_en_d && !full) begin
            mem[write_ptr] <= data_in;       // Write data to memory
            write_ptr <= write_ptr + 1'b1;  // Increment write pointer
+
+           if(write_ptr >= 30) begin
+              Debug_fifo <= 1'b1;
+           end else begin
+              Debug_fifo <= 1'b0;
+           end
+
            // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
         end
     end
-
+    /*******************************************************************************************/
     // Read operation
     always @(posedge clock or posedge reset) begin
         if (reset) begin
@@ -55,7 +67,7 @@ module fifo #(
             //Debug_fifo <= ~Debug_fifo;
         end
     end
-
+    /*******************************************************************************************/
     // Count management
     always @(posedge clock or posedge reset) begin
         if (reset) begin
@@ -68,7 +80,7 @@ module fifo #(
             endcase
         end
     end
-
+    /*******************************************************************************************/
     // Output assignments
     assign data_out = mem[read_ptr];
     assign full = (count == DEPTH);

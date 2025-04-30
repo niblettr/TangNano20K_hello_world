@@ -24,7 +24,7 @@ module Top_module(
 
     /********** UART Transmission **********/
     reg tx_fifo_write_en;
-    reg [7:0] tx_fifo_data_in = 8'b0;     // Data to transmit
+    reg [7:0] tx_fifo_data_in = 8'b0;
     /********** UART Reception **********/
     reg rx_fifo_read_en;
     reg [7:0] rx_fifo_data_out = 8'b0;
