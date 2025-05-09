@@ -6,7 +6,7 @@ module uart #(
     output reg  uart_tx_pin,
     input       uart_rx_pin,
     output reg  Debug_uart,               // Routed to pin in top module, for debug purposes...
-    output reg  Debug_uart2,               // Routed to pin in top module, for debug purposes...
+    //output reg  Debug_uart2,               // Routed to pin in top module, for debug purposes...
 
     input [7:0] tx_fifo_data_in,
     input       tx_fifo_write_en,
@@ -43,8 +43,8 @@ module uart #(
         .data_in(tx_fifo_data_in),
         .data_out(tx_fifo_data_out),
         .full(tx_fifo_full),
-        .empty(tx_fifo_empty),
-        .Debug_fifo(Debug_uart_dummy)
+        .empty(tx_fifo_empty)
+        //.Debug_fifo(Debug_uart_dummy)
     );
 
     fifo #(
@@ -58,8 +58,8 @@ module uart #(
         .data_in(rx_fifo_data_in),
         .data_out(rx_fifo_data_out),
         .full(rx_fifo_full),
-        .empty(rx_fifo_empty),
-        .Debug_fifo(Debug_uart)
+        .empty(rx_fifo_empty)
+        //.Debug_fifo(Debug_uart)
     );
 
 

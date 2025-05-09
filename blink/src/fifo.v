@@ -9,9 +9,9 @@ module fifo #(
     input  [DATA_WIDTH-1:0] data_in,    // Data to write into the FIFO
     output [DATA_WIDTH-1:0] data_out,   // Data read from the FIFO
     output                  full,       // FIFO full flag
-    output                  empty,      // FIFO empty flag
-    output reg              Debug_fifo,
-    output reg              Debug_fifo2
+    output                  empty      // FIFO empty flag
+    //output reg              Debug_fifo,
+    //output reg              Debug_fifo2
 );
 
     // Internal signals
@@ -42,15 +42,15 @@ module fifo #(
 
         if (reset) begin           
            write_ptr <= 0;
-           Debug_fifo <= 1'b0;
+           //Debug_fifo <= 1'b0;
         end else if (write_en && !write_en_d && !full) begin
            mem[write_ptr] <= data_in;       // Write data to memory
            write_ptr <= write_ptr + 1'b1;  // Increment write pointer
 
            if(write_ptr >= 30) begin
-              Debug_fifo <= 1'b1;
+              //Debug_fifo <= 1'b1;
            end else begin
-              Debug_fifo <= 1'b0;
+              //Debug_fifo <= 1'b0;
            end
 
            // or write_ptr <= (write_ptr + 1'b1) % DEPTH;  // Increment write pointer
