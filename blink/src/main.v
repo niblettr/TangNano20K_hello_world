@@ -1,9 +1,18 @@
+//`define USE_SIMPLE_TEST
+
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
+    output reg [7:0] DataP,    // Data Port                 Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
+    output reg [2:0] AddessP,  // Address Port              Pin28,Pin25,Pin26
+    output reg B0P,            //                           Pin29
+    output reg TestAddressP,   //                           Pin30
+    output reg RdP,            // Read Enable               Pin31
+    output reg WrP,            // write Enable              Pin17
+    output reg ResetP,         //                           Pin20
     output Uart_TX_Pin,    // Transmit pin of UART          Pin55
     input  Uart_RX_Pin,    // Receive pin of UART           Pin49
-    output Debug_Pin,      // Debug toggle                  Pin30
-    output Debug_clock_pin // Debug toggle                  Pin29
+    output Debug_Pin,      // Debug toggle                  Pin76
+    output Debug_clock_pin // Debug toggle                  Pin80
 );
 
     reg TopLevelDebug  = 0;
@@ -49,6 +58,16 @@ module Top_module(
         .Debug_uart(Debug_uart)
     );
 
+parameter CMD_LENGTH  = 4;  // "TEST"
+parameter CMD_LENGTH2 = 11; // "pb_i_write,"
+reg [7:0] command_buffer [0:CMD_LENGTH-1]; // Buffer to store the command
+reg [7:0] command_buffer2 [0:CMD_LENGTH2-1]; // Buffer to store the command
+
+wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3]};
+wire [8*CMD_LENGTH2:0] command_word2 = {command_buffer2[0], command_buffer2[1], command_buffer2[2], command_buffer2[3], command_buffer2[4],
+                             command_buffer2[5], command_buffer2[6], command_buffer2[7], command_buffer2[8], command_buffer2[9], command_buffer2[10]};
+
+reg [5:0] command_index = 0;               // Index for the command buffer
 
     // Define FSM states with meaningful names
     typedef enum logic [2:0] {
@@ -60,22 +79,13 @@ module Top_module(
         STATE_FAIL   = 3'b101
     } state_t;
 
-
-// Parameters for command handling
- //"TEST" 54 45 53 54
-parameter CMD_TEST = "TEST";
-wire [31:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3]};
-
-parameter CMD_LENGTH = 4; // Number of bytes in a command
-reg [7:0] command_buffer [0:CMD_LENGTH-1]; // Buffer to store the command
-reg [2:0] command_index = 0;               // Index for the command buffer
-reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
+reg [2:0] command_state = STATE_INIT;      // State machine for command handling
 
 reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
 reg uart_tx_process        = 1'b0;
 
 reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
-
+reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 always @(posedge clock) begin
 
     rx_fifo_read_en <= 1'b0;
@@ -106,21 +116,37 @@ always @(posedge clock) begin
         end
 
     endcase
-
+/*********************************************************************************************************/
     case (command_state)
         STATE_INIT: begin // we want to reset fifo here then move on..
-           
-           command_state <= STATE_IDLE;
+           if(reset_counter < 100) begin
+              reset_counter <= reset_counter + 1'b1;
+              ResetP       <= 1'b1;        // hold in reset
+              DataP        <= 8'b0;
+              AddessP      <= 3'b0;
+              TestAddressP <= 1'b0;
+              B0P          <= 1'b0;
+              RdP          <= 1'b0;
+              WrP          <= 1'b0;
+           end else begin
+              ResetP       <= 1'b0;   // release from reset state
+              B0P          <= 1'b1;   // enable the board
+              command_state <= STATE_IDLE;
+           end
         end
+
         STATE_IDLE: begin
             // Idle state: Wait for data in RX FIFO
             if (!rx_fifo_empty && uart_rx_previous_empty) begin
                 uart_rx_previous_empty <= 1'b0;
                 rx_fifo_read_en <= 1'b1; // Read from RX FIFO
+`ifdef USE_SIMPLE_TEST
                 command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
-
-
-                if (command_index == CMD_LENGTH -1 ) begin
+                if (command_index == CMD_LENGTH -1) begin
+`else
+                command_buffer2[command_index] <= rx_fifo_data_out; // Store received byte
+                if (command_index == CMD_LENGTH2 -1 ) begin
+`endif
                     command_index <= 3'b0;        // reset to zero
                     command_state <= STATE_PARSE; // Move to command processing state
                     //TopLevelDebug <= ~TopLevelDebug;
@@ -134,8 +160,12 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE: begin
-            //if (command_buffer[0] == 8'h54 && command_buffer[1] == 8'h45 && command_buffer[2] == 8'h53 && command_buffer[3] == 8'h54) begin // Example: Command "TEST" 54 45 53 54
-            if (command_word == CMD_TEST) begin
+`ifdef USE_SIMPLE_TEST
+            if (command_word == "TEST") begin
+`else
+            // command structure is "pb_i_write,0xB00xB01xB02xB03xB4" // i.e. B00 is mux address, and B1-B4 are data bytes
+            if (command_word2 == "pb_i_write,") begin
+`endif
                command_state <= STATE_PASS;
             end else begin
               command_state <= STATE_FAIL;
@@ -145,12 +175,19 @@ always @(posedge clock) begin
         STATE_PASS: begin
            uart_tx_process <= 1'b1;
            uart_string [0:5] <= {"P", "a", "s", "s", 13, 10};
-           TopLevelDebug <= ~TopLevelDebug;
            command_state <= STATE_IDLE;
+           //ResetP <= ~ResetP;  // not a good idea to toggle it...
+           RdP <= ~RdP;
+           WrP <= ~WrP;
+           //B0P <= ~B0P;        // not a good idea to toggle it...
+           TestAddressP <= ~TestAddressP;
+           DataP <= ~DataP;
+           AddessP <= ~DataP;
+
+           //DataP[0] <= ~DataP[0];
         end
 
         STATE_FAIL: begin
-           TopLevelDebug2 <= ~TopLevelDebug2;
            uart_tx_process <= 1'b1;
            uart_string [0:5] <= {"F", "a", "i", "l", 13, 10};
            command_state <= STATE_IDLE;
@@ -182,9 +219,9 @@ end
 */
 
 /********** Continuous Assignment **********/
-assign Debug_clock_pin = TopLevelDebug2;
-assign Debug_Pin = Debug_uart;
+//assign Debug_clock_pin = TopLevelDebug2;
+//assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
-//assign Debug_Pin = TopLevelDebug;
+assign Debug_Pin = TopLevelDebug;
 
 endmodule
