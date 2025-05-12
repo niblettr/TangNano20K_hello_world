@@ -5,10 +5,8 @@
 //Part Number: GW2AR-LV18QN88C8/I7
 //Device: GW2AR-18
 //Device Version: C
-//Created Time: Thu 05 01 13:53:09 2025
+//Created Time: Fri 05 09 10:04:12 2025
 
-IO_LOC "Debug_clock_pin" 80;
-IO_PORT "Debug_clock_pin" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 IO_LOC "Debug_Pin" 76;
 IO_PORT "Debug_Pin" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 IO_LOC "Uart_TX_Pin" 55;
