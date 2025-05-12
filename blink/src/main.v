@@ -26,9 +26,29 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
     /********** UART debug String **********/
-    reg [7:0] uart_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
-    parameter uart_string_len   = 6;
-    reg [3:0] uart_string_index = 0; // Index for string transmission
+    reg [7:0] uart_tx_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
+    parameter uart_tx_string_len   = 6;
+    //reg [7:0] uart_string_len   = 6;
+    reg [3:0] uart_tx_string_index = 0; // Index for string transmission
+
+/**********************************************************************/
+    task set_string_with_hex;
+        input [7:0] str [0:31];  // Fixed-size array for the string
+        input integer str_len;   // Length of the input string
+        input [7:0] hex_value;   // Input hex value
+        integer i;
+        begin
+            // Copy the string into uart_tx_string
+            for (i = 0; i < str_len; i = i + 1) begin
+                uart_tx_string[i] <= str[i];
+            end
+            // Append the hex value as ASCII characters
+            //uart_tx_string[str_len]     <= hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
+            //uart_string[str_len + 1] <= hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
+            //uart_tx_string_len <= str_len; // needs enabling ASAP!
+        end
+    endtask
+/**********************************************************************/
 
 
     /********** UART Transmission **********/
@@ -98,13 +118,13 @@ always @(posedge clock) begin
         end // case
 
         3'b001: begin
-            if (uart_string_index < uart_string_len) begin
-               tx_fifo_data_in <= uart_string[uart_string_index]; // Load the current character
+            if (uart_tx_string_index < uart_tx_string_len) begin
+               tx_fifo_data_in <= uart_tx_string[uart_tx_string_index]; // Load the current character
                tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
-               uart_string_index <= uart_string_index + 1'b1;     // Move to the next character
+               uart_tx_string_index <= uart_tx_string_index + 1'b1;     // Move to the next character
                uart_tx_state <= 3'b011;
              end else begin
-               uart_string_index <= 1'b0;     // reset index
+               uart_tx_string_index <= 1'b0;     // reset index
                uart_tx_process <= 1'b0;
                uart_tx_state <= 3'b000;
              end
@@ -174,7 +194,7 @@ always @(posedge clock) begin
 
         STATE_PASS: begin
            uart_tx_process <= 1'b1;
-           uart_string [0:5] <= {"P", "a", "s", "s", 13, 10};
+           uart_tx_string [0:5] <= {"P", "a", "s", "s", 13, 10};
            command_state <= STATE_IDLE;
            //ResetP <= ~ResetP;  // not a good idea to toggle it...
            RdP <= ~RdP;
@@ -189,7 +209,7 @@ always @(posedge clock) begin
 
         STATE_FAIL: begin
            uart_tx_process <= 1'b1;
-           uart_string [0:5] <= {"F", "a", "i", "l", 13, 10};
+           uart_tx_string [0:5] <= {"F", "a", "i", "l", 13, 10};
            command_state <= STATE_IDLE;
         end
 
