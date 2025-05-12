@@ -26,28 +26,36 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
     /********** UART debug String **********/
-    reg [7:0] uart_tx_string [0:5] = {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
-    parameter uart_tx_string_len   = 6;
-    //reg [7:0] uart_string_len   = 6;
     reg [3:0] uart_tx_string_index = 0; // Index for string transmission
+    reg [7:0] uart_tx_string [0:31];//= {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
+    //parameter uart_tx_string_len   = 6;   // this is a CONSTANT that can not be changed (value is known at compile time but who cares...)
+    reg [7:0] uart_tx_string_len   = 6; // this does NOT work...???????
+
+    reg [7:0] input_string [0:31]; // Array to hold the string
+    integer input_length;          // Length of the string
+    reg [7:0] hex_value;           // Hex value to append
+
 
 /**********************************************************************/
-    task set_string_with_hex;
-        input [7:0] str [0:31];  // Fixed-size array for the string
-        input integer str_len;   // Length of the input string
-        input [7:0] hex_value;   // Input hex value
-        integer i;
-        begin
-            // Copy the string into uart_tx_string
-            for (i = 0; i < str_len; i = i + 1) begin
-                uart_tx_string[i] <= str[i];
-            end
-            // Append the hex value as ASCII characters
-            //uart_tx_string[str_len]     <= hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
-            //uart_string[str_len + 1] <= hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
-            //uart_tx_string_len <= str_len; // needs enabling ASAP!
+task set_string_with_hex;
+    input [7:0] str [0:31];  // Fixed-size array for the string
+    input integer str_len;   // Length of the input string
+    input [7:0] hex_value;   // Input hex value
+    integer i;
+    begin
+        uart_tx_string_len = str_len + 4; // Update the length to include the hex value and \r\n
+        // Copy the string into uart_tx_string
+        for (i = 0; i < str_len; i = i + 1) begin
+            uart_tx_string[i] = str[i];
         end
-    endtask
+        // Append the hex value as ASCII characters
+        uart_tx_string[str_len]     = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
+        uart_tx_string[str_len + 1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
+        // Append \r\n
+        uart_tx_string[str_len + 2] = 8'h0D; // ASCII for '\r'
+        uart_tx_string[str_len + 3] = 8'h0A; // ASCII for '\n'
+    end
+endtask
 /**********************************************************************/
 
 
@@ -193,18 +201,21 @@ always @(posedge clock) begin
         end // case
 
         STATE_PASS: begin
-           uart_tx_process <= 1'b1;
-           uart_tx_string [0:5] <= {"P", "a", "s", "s", 13, 10};
-           command_state <= STATE_IDLE;
-           //ResetP <= ~ResetP;  // not a good idea to toggle it...
-           RdP <= ~RdP;
-           WrP <= ~WrP;
-           //B0P <= ~B0P;        // not a good idea to toggle it...
-           TestAddressP <= ~TestAddressP;
-           DataP <= ~DataP;
-           AddessP <= ~DataP;
+           
+           //uart_tx_string [0:5] <= {"P", "a", "s", "s", 13, 10};
 
-           //DataP[0] <= ~DataP[0];
+           input_string[0] = "P";
+           input_string[1] = "a";
+           input_string[2] = "s";
+           input_string[3] = "s";
+           input_string[4] = " ";
+           //input_string[5] = 10;
+           input_length = 5;          // Length of the string "Hello"
+           hex_value = 8'hA5;         // Example hex value
+
+           set_string_with_hex(input_string, input_length, hex_value);
+           uart_tx_process <= 1'b1;
+           command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
