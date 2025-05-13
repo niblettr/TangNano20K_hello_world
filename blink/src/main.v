@@ -1,5 +1,3 @@
-//`define USE_SIMPLE_TEST
-
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
     output reg [7:0] DataP,    // Data Port                 Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
@@ -27,37 +25,45 @@ module Top_module(
 
     /********** UART debug String **********/
     reg [3:0] uart_tx_string_index = 0; // Index for string transmission
-    reg [7:0] uart_tx_string [0:31];//= {"T", "e", "s", "t", 13, 10}; // "Test\r\n"
-    //parameter uart_tx_string_len   = 6;   // this is a CONSTANT that can not be changed (value is known at compile time but who cares...)
-    reg [7:0] uart_tx_string_len   = 6; // this does NOT work...???????
+    reg [7:0] uart_tx_string [0:63];
+    reg [7:0] uart_tx_string_len;
 
-    reg [7:0] input_string [0:31]; // Array to hold the string
-    integer input_length;          // Length of the string
-    reg [7:0] hex_value;           // Hex value to append
+    reg [7:0] debug_hex_reg;
 
-
+    reg [7:0] debug_hex_ascii [0:1] = "AA";
 /**********************************************************************/
-task set_string_with_hex;
-    input [7:0] str [0:31];  // Fixed-size array for the string
-    input integer str_len;   // Length of the input string
+task hex_to_ascii;
     input [7:0] hex_value;   // Input hex value
-    integer i;
     begin
-        uart_tx_string_len = str_len + 4; // Update the length to include the hex value and \r\n
-        // Copy the string into uart_tx_string
-        for (i = 0; i < str_len; i = i + 1) begin
-            uart_tx_string[i] = str[i];
-        end
         // Append the hex value as ASCII characters
-        uart_tx_string[str_len]     = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
-        uart_tx_string[str_len + 1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
-        // Append \r\n
-        uart_tx_string[str_len + 2] = 8'h0D; // ASCII for '\r'
-        uart_tx_string[str_len + 3] = 8'h0A; // ASCII for '\n'
+        debug_hex_ascii[0] = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
+        debug_hex_ascii[1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
+    end
+endtask
+
+task send_debug_message;
+    input [7:0] debug_reg_value; // Debug register value
+    input [64*8-1:0] message;    // Debug message (up to 64 characters)
+    input integer message_len;   // Length of the message
+    integer i;                   // Loop variable
+    begin
+        debug_hex_reg = debug_reg_value; // Set the debug register
+        hex_to_ascii(debug_hex_reg);     // Convert debug register to ASCII
+        uart_tx_string_len = message_len + 4; // Message length + 2 hex chars + CR + LF
+        
+        // Copy the message into the UART string
+        for (i = 0; i < message_len; i = i + 1) begin
+            uart_tx_string[i] <= message[(message_len - 1 - i) * 8 +: 8];
+        end
+        
+        uart_tx_string[message_len] <= debug_hex_ascii[0]; // Add hex MSB
+        uart_tx_string[message_len+1] <= debug_hex_ascii[1]; // Add hex LSB
+        uart_tx_string[message_len+2] <= 8'h0D;     // Add carriage return
+        uart_tx_string[message_len+3] <= 8'h0A;     // Add line feed
+        uart_tx_process <= 1'b1;                    // Trigger UART transmission
     end
 endtask
 /**********************************************************************/
-
 
     /********** UART Transmission **********/
     reg tx_fifo_write_en;
@@ -86,14 +92,11 @@ endtask
         .Debug_uart(Debug_uart)
     );
 
-parameter CMD_LENGTH  = 4;  // "TEST"
-parameter CMD_LENGTH2 = 11; // "pb_i_write,"
+parameter CMD_LENGTH = 11; // "pb_i_write,"
 reg [7:0] command_buffer [0:CMD_LENGTH-1]; // Buffer to store the command
-reg [7:0] command_buffer2 [0:CMD_LENGTH2-1]; // Buffer to store the command
 
-wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3]};
-wire [8*CMD_LENGTH2:0] command_word2 = {command_buffer2[0], command_buffer2[1], command_buffer2[2], command_buffer2[3], command_buffer2[4],
-                             command_buffer2[5], command_buffer2[6], command_buffer2[7], command_buffer2[8], command_buffer2[9], command_buffer2[10]};
+wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3], command_buffer[4],
+                                      command_buffer[5], command_buffer[6], command_buffer[7], command_buffer[8], command_buffer[9], command_buffer[10]};
 
 reg [5:0] command_index = 0;               // Index for the command buffer
 
@@ -168,19 +171,13 @@ always @(posedge clock) begin
             if (!rx_fifo_empty && uart_rx_previous_empty) begin
                 uart_rx_previous_empty <= 1'b0;
                 rx_fifo_read_en <= 1'b1; // Read from RX FIFO
-`ifdef USE_SIMPLE_TEST
+
                 command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
-                if (command_index == CMD_LENGTH -1) begin
-`else
-                command_buffer2[command_index] <= rx_fifo_data_out; // Store received byte
-                if (command_index == CMD_LENGTH2 -1 ) begin
-`endif
+                if (command_index == CMD_LENGTH -1 ) begin
                     command_index <= 3'b0;        // reset to zero
                     command_state <= STATE_PARSE; // Move to command processing state
-                    //TopLevelDebug <= ~TopLevelDebug;
                 end else begin
                    command_index <= command_index + 1'b1; // Increment buffer index
-                   //TopLevelDebug <= ~TopLevelDebug;
                 end
             end else if (rx_fifo_empty) begin
               uart_rx_previous_empty <= 1'b1;
@@ -188,12 +185,8 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE: begin
-`ifdef USE_SIMPLE_TEST
-            if (command_word == "TEST") begin
-`else
-            // command structure is "pb_i_write,0xB00xB01xB02xB03xB4" // i.e. B00 is mux address, and B1-B4 are data bytes
-            if (command_word2 == "pb_i_write,") begin
-`endif
+            if (command_word == "pb_i_write,") begin
+
                command_state <= STATE_PASS;
             end else begin
               command_state <= STATE_FAIL;
@@ -201,26 +194,14 @@ always @(posedge clock) begin
         end // case
 
         STATE_PASS: begin
-           
-           //uart_tx_string [0:5] <= {"P", "a", "s", "s", 13, 10};
-
-           input_string[0] = "P";
-           input_string[1] = "a";
-           input_string[2] = "s";
-           input_string[3] = "s";
-           input_string[4] = " ";
-           //input_string[5] = 10;
-           input_length = 5;          // Length of the string "Hello"
-           hex_value = 8'hA5;         // Example hex value
-
-           set_string_with_hex(input_string, input_length, hex_value);
-           uart_tx_process <= 1'b1;
+           debug_hex_reg = 8'h55; // example
+           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
            command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
-           uart_tx_process <= 1'b1;
-           uart_tx_string [0:5] <= {"F", "a", "i", "l", 13, 10};
+           debug_hex_reg = 8'hAA; // example
+           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
            command_state <= STATE_IDLE;
         end
 
