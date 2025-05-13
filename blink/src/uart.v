@@ -13,6 +13,7 @@ module uart #(
 
     output reg  rx_fifo_empty,    
     output reg  [7:0] rx_fifo_data_out,
+    output reg  rx_sentence_received,
     input       rx_fifo_read_en
 );
 

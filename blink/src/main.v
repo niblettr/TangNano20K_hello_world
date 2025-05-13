@@ -72,6 +72,7 @@ endtask
     reg rx_fifo_read_en;
     reg [7:0] rx_fifo_data_out = 8'b0;
     wire rx_fifo_empty;
+    wire rx_sentence_received;
 /**************************************************************************************************************/
 
     uart #(
@@ -89,6 +90,7 @@ endtask
         .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
         .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
 
+        .rx_sentence_received(rx_sentence_received),       // Connect rx_sentence_received
         .Debug_uart(Debug_uart)
     );
 
@@ -166,13 +168,13 @@ always @(posedge clock) begin
            end
         end
 
-        STATE_IDLE: begin
-            // Idle state: Wait for data in RX FIFO
+        STATE_IDLE: begin // Idle state: Wait for data in RX FIFO            
             if (!rx_fifo_empty && uart_rx_previous_empty) begin
                 uart_rx_previous_empty <= 1'b0;
                 rx_fifo_read_en <= 1'b1; // Read from RX FIFO
 
                 command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
+
                 if (command_index == CMD_LENGTH -1 ) begin
                     command_index <= 3'b0;        // reset to zero
                     command_state <= STATE_PARSE; // Move to command processing state
