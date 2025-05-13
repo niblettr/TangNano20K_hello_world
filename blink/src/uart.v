@@ -69,10 +69,12 @@ module uart #(
     reg _reset = 1'b1;              // Reset signal
     reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
-    //reg Debug_uart_dummy = 1'b0;    // eventually map to another debug pin... Does nothing ATM..
+    // Add a timer for quiet period detection
+    reg [15:0] quiet_period_counter = 0; // Counter for quiet period
+    localparam BYTE_PERIOD = BAUD_DIVISOR * 10; // Duration of 1 byte (10 bits at the current baud rate)
 
 
-
+    // initialisation
     always @(posedge clock) begin
         if (!reset_done) begin
             if (reset_counter < 4'd1) begin
@@ -90,14 +92,13 @@ module uart #(
         end
     end
 
-
-
     // Internal registers for transmission
     reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
     reg [3:0] bit_index = 0;                 // Index for bits being transmitted
     reg [9:0] tx_shift_reg = 10'b1111111111; // Shift register for start, data, and stop bits
     reg transmitting = 1'b0;                 // Indicates if UART is currently transmitting
 
+    /*********************************************************************************************/
     // UART Transmit Logic
     always @(posedge clock) begin
         tx_fifo_read_en <= 1'b0;                           // Deassert read enable
@@ -132,9 +133,6 @@ module uart #(
         end
     end
 
-    /*********************************************************************************************/
-    // UART Receive Logic
-
     // Internal registers for reception
     reg [15:0] rx_baud_counter = 0;            // Counter for baud rate timing during reception
     reg [3:0]  rx_bit_index = 0;               // Index for bits being received
@@ -148,20 +146,18 @@ module uart #(
     always @(posedge clock) begin
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
-    end
 
-    always @(posedge clock) begin
+    // Start bit detection
     if (!receiving && !uart_rx_pin_sync2 ) begin
-        // Start bit detected
         receiving <= 1'b1;
         rx_baud_counter <= BAUD_DIVISOR / 2; // Start sampling in the middle of the start bit
         rx_bit_index <= 0;
+        quiet_period_counter <= 0; // Reset quiet period counter
     end
 
     if (receiving) begin
         if (rx_baud_counter < BAUD_DIVISOR - 1) begin
-            rx_baud_counter <= rx_baud_counter + 1'b1;
-            
+            rx_baud_counter <= rx_baud_counter + 1'b1;            
         end else begin
             rx_baud_counter <= 0;            
             if (rx_bit_index >= 1 && rx_bit_index <= 8) begin
@@ -171,11 +167,9 @@ module uart #(
 
             rx_bit_index <= rx_bit_index + 1'b1;
 
-            if (rx_bit_index == 9) begin
-               
+            if (rx_bit_index == 9) begin               
                // Stop bit received, validate it
                if (uart_rx_pin_sync2 && !rx_fifo_full) begin
-                  //Debug_uart <= 1;
                   rx_fifo_write_en <= 1'b1;          // Enable write to FIFO
                   rx_fifo_data_in <= rx_shift_reg;   // Write received data to FIFO
                end
