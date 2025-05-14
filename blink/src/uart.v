@@ -65,12 +65,13 @@ module uart #(
 
 
     // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
-    reg [1:0] reset_counter = 4'b0; // 1-bit counter for reset delay
+    reg [1:0] reset_counter = 2'b0; // 2-bit counter for reset delay
     reg _reset = 1'b1;              // Reset signal
     reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
     // Add a timer for quiet period detection
     reg [15:0] quiet_period_counter = 0; // Counter for quiet period
+    reg quiet_period_counter_started = 1'b0;
     localparam BYTE_PERIOD = BAUD_DIVISOR * 10; // Duration of 1 byte (10 bits at the current baud rate)
 
 
@@ -142,17 +143,21 @@ module uart #(
     reg uart_rx_pin_sync1 = 1;
     reg uart_rx_pin_sync2 = 1;  //Synchronize uart_rx_pin to the clock domain
 
+    /*********************************************************************************************/
+    // UART Receive Logic
     // Synchronize uart_rx_pin to the clock domain
     always @(posedge clock) begin
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
+
+        rx_sentence_received <= 1'b0;
 
     // Start bit detection
     if (!receiving && !uart_rx_pin_sync2 ) begin
         receiving <= 1'b1;
         rx_baud_counter <= BAUD_DIVISOR / 2; // Start sampling in the middle of the start bit
         rx_bit_index <= 0;
-        quiet_period_counter <= 0; // Reset quiet period counter
+        quiet_period_counter_started <= 1'b0;        
     end
 
     if (receiving) begin
@@ -173,11 +178,26 @@ module uart #(
                   rx_fifo_write_en <= 1'b1;          // Enable write to FIFO
                   rx_fifo_data_in <= rx_shift_reg;   // Write received data to FIFO
                end
-               receiving <= 1'b0;                    // End reception
+                receiving <= 1'b0;                    // End reception
+                quiet_period_counter <= 0;            // Reset quiet period counter
+                quiet_period_counter_started <= 1'b1;
             end
         end
+
     end else begin
         rx_fifo_write_en <= 1'b0; // Deassert write enable when not receiving
+
+        // Increment quiet period counter when not receiving
+        if (quiet_period_counter_started) begin
+            if (quiet_period_counter < BYTE_PERIOD) begin
+                quiet_period_counter <= quiet_period_counter + 1'b1;
+            end else begin
+                // Quiet period detected
+                rx_sentence_received <= 1'b1; // Assert rx_sentence_received
+                quiet_period_counter <= 0;   // Reset the counter
+                quiet_period_counter_started <= 1'b0;
+            end
+        end
     end
 end
 

@@ -10,11 +10,11 @@ module Top_module(
     output Uart_TX_Pin,    // Transmit pin of UART          Pin55
     input  Uart_RX_Pin,    // Receive pin of UART           Pin49
     output Debug_Pin,      // Debug toggle                  Pin76
-    output Debug_clock_pin // Debug toggle                  Pin80
+    output Debug_Pin2      // Debug toggle                  Pin80
 );
 
-    reg TopLevelDebug  = 0;
-    reg TopLevelDebug2 = 0;
+    reg TopLevelDebug2  = 0;
+
 
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
@@ -29,6 +29,7 @@ module Top_module(
     reg [7:0] uart_tx_string_len;
 
     reg [7:0] debug_hex_reg;
+    reg [15:0] debug_16hex_reg = "AA";
 
     reg [7:0] debug_hex_ascii [0:1] = "AA";
 /**********************************************************************/
@@ -101,7 +102,7 @@ wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], comm
                                       command_buffer[5], command_buffer[6], command_buffer[7], command_buffer[8], command_buffer[9], command_buffer[10]};
 
 reg [5:0] command_index = 0;               // Index for the command buffer
-
+reg [5:0] command_len = 0;
     // Define FSM states with meaningful names
     typedef enum logic [2:0] {
         STATE_INIT   = 3'b000,
@@ -174,26 +175,35 @@ always @(posedge clock) begin
                 rx_fifo_read_en <= 1'b1; // Read from RX FIFO
 
                 command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
-
-                if (command_index == CMD_LENGTH -1 ) begin
-                    command_index <= 3'b0;        // reset to zero
-                    command_state <= STATE_PARSE; // Move to command processing state
-                end else begin
-                   command_index <= command_index + 1'b1; // Increment buffer index
-                end
+                command_index <= command_index + 1'b1;
+                //TopLevelDebug2 <= ~TopLevelDebug2;
+              
             end else if (rx_fifo_empty) begin
               uart_rx_previous_empty <= 1'b1;
+            end
+
+            if(rx_sentence_received) begin
+                command_len <= command_index;
+                command_index <= 3'b0;        // reset to zero
+                command_state <= STATE_PARSE; // Move to command processing state
             end
         end
 
         STATE_PARSE: begin
             if (command_word == "pb_i_write,") begin
-
-               command_state <= STATE_PASS;
+                substate_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
             end else begin
-              command_state <= STATE_FAIL;
+                command_state <= STATE_FAIL;
             end
-        end // case
+        end
+
+        STATE_WAIT: begin
+            if (substate_done) begin
+                substate_active <= 1'b0; // Deactivate the substate machine
+                command_state <= STATE_PASS; // Transition to STATE_PASS
+            end
+        end
 
         STATE_PASS: begin
            debug_hex_reg = 8'h55; // example
@@ -203,7 +213,7 @@ always @(posedge clock) begin
 
         STATE_FAIL: begin
            debug_hex_reg = 8'hAA; // example
-           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
+           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x", debug_16hex_reg}, 11);
            command_state <= STATE_IDLE;
         end
 
@@ -212,6 +222,57 @@ always @(posedge clock) begin
         end
     endcase
 end
+
+
+
+// Define states for the new state machine
+typedef enum logic [1:0] {
+    SUBSTATE_IDLE   = 2'b00,
+    SUBSTATE_TASK1  = 2'b01,
+    SUBSTATE_TASK2  = 2'b10,
+    SUBSTATE_DONE   = 2'b11
+} substate_t;
+
+reg [1:0] substate = SUBSTATE_IDLE; // State variable for the new state machine
+reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
+reg substate_done = 1'b0; // Flag to indicate substate completion
+
+always @(posedge clock) begin
+    if (substate_active) begin
+        case (substate)
+            SUBSTATE_IDLE: begin
+                // Perform initialization or idle tasks
+                substate <= SUBSTATE_TASK1; // Move to the first task
+            end
+
+            SUBSTATE_TASK1: begin
+                // Perform the first task
+                TopLevelDebug2 <= ~TopLevelDebug2; // Example: Toggle a debug signal
+
+                // Move to the next task
+                substate <= SUBSTATE_TASK2;
+            end
+
+            SUBSTATE_TASK2: begin
+                // Perform the second task
+                // Example: Send a debug message
+                //send_debug_message(8'h01, {"Task", " ", "2", " ", "Done"}, 9);
+
+                // Move to the done state
+                substate <= SUBSTATE_DONE;
+            end
+
+            SUBSTATE_DONE: begin
+                // Indicate substate completion
+                substate_done <= 1'b1;   // Indicate substate completion
+                substate <= SUBSTATE_IDLE;
+            end
+        endcase
+    end else begin
+        substate_done <= 1'b0; // Clear the flag when substate is inactive
+    end
+end
+
 
 /*
 reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
@@ -233,9 +294,10 @@ end
 */
 
 /********** Continuous Assignment **********/
-//assign Debug_clock_pin = TopLevelDebug2;
+assign Debug_Pin = rx_sentence_received;
+assign Debug_Pin2 = TopLevelDebug2;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
-assign Debug_Pin = TopLevelDebug;
+//assign Debug_Pin = TopLevelDebug;
 
 endmodule
