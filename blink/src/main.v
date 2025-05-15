@@ -1,12 +1,12 @@
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
-    output reg [7:0] DataP,    // Data Port                 Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
-    output reg [2:0] AddessP,  // Address Port              Pin28,Pin25,Pin26
-    output reg B0P,            //                           Pin29
+    output reg [7:0] DataPortPins,    // Data Port                 Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
+    output reg [2:0] AddessPortPin,  // Address Port              Pin28,Pin25,Pin26
     output reg TestAddressP,   //                           Pin30
     output reg RdP,            // Read Enable               Pin31
     output reg WrP,            // write Enable              Pin17
-    output reg ResetP,         //                           Pin20
+    output reg LampResetPin,       //                           Pin20
+    output reg OE_Pin,           // LevelShifter Enable       Pin19
     output Uart_TX_Pin,    // Transmit pin of UART          Pin55
     input  Uart_RX_Pin,    // Receive pin of UART           Pin49
     output Debug_Pin,      // Debug toggle                  Pin76
@@ -120,6 +120,19 @@ reg uart_tx_process        = 1'b0;
 
 reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
+
+// Define states for the new state machine
+typedef enum logic [1:0] {
+    SUBSTATE_IDLE   = 2'b00,
+    SUBSTATE_TASK1  = 2'b01,
+    SUBSTATE_TASK2  = 2'b10,
+    SUBSTATE_DONE   = 2'b11
+} substate_t;
+
+reg [1:0] substate = SUBSTATE_IDLE; // State variable for the new state machine
+reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
+reg substate_done = 1'b0; // Flag to indicate substate completion
+
 always @(posedge clock) begin
 
     rx_fifo_read_en <= 1'b0;
@@ -154,17 +167,17 @@ always @(posedge clock) begin
     case (command_state)
         STATE_INIT: begin // we want to reset fifo here then move on..
            if(reset_counter < 100) begin
-              reset_counter <= reset_counter + 1'b1;
-              ResetP       <= 1'b1;        // hold in reset
-              DataP        <= 8'b0;
-              AddessP      <= 3'b0;
-              TestAddressP <= 1'b0;
-              B0P          <= 1'b0;
-              RdP          <= 1'b0;
-              WrP          <= 1'b0;
+              reset_counter  <= reset_counter + 1'b1;
+              LampResetPin       <= 1'b1;        // hold in reset
+              DataPortPins   <= 8'b0;
+              AddessPortPin  <= 3'b0;
+              TestAddressP   <= 1'b01;
+              RdP            <= 1'b0;
+              WrP            <= 1'b0;
+              OE_Pin         <= 1'b0;   // Enable pin of LevelShifter
            end else begin
-              ResetP       <= 1'b0;   // release from reset state
-              B0P          <= 1'b1;   // enable the board
+              LampResetPin       <= 1'b0;   // release from reset state
+              OE_Pin         <= 1'b1;   // Enable pin of LevelShifter
               command_state <= STATE_IDLE;
            end
         end
@@ -206,8 +219,8 @@ always @(posedge clock) begin
         end
 
         STATE_PASS: begin
-           debug_hex_reg = 8'h55; // example
-           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+           //debug_hex_reg = 8'h55; // example
+           //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
            command_state <= STATE_IDLE;
         end
 
@@ -221,23 +234,8 @@ always @(posedge clock) begin
             command_state <= STATE_IDLE; // Reset to idle state
         end
     endcase
-end
-
-
-
-// Define states for the new state machine
-typedef enum logic [1:0] {
-    SUBSTATE_IDLE   = 2'b00,
-    SUBSTATE_TASK1  = 2'b01,
-    SUBSTATE_TASK2  = 2'b10,
-    SUBSTATE_DONE   = 2'b11
-} substate_t;
-
-reg [1:0] substate = SUBSTATE_IDLE; // State variable for the new state machine
-reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
-reg substate_done = 1'b0; // Flag to indicate substate completion
-
-always @(posedge clock) begin
+/************************************************************************************************************************/
+/************************************************************************************************************************/
     if (substate_active) begin
         case (substate)
             SUBSTATE_IDLE: begin
@@ -255,9 +253,9 @@ always @(posedge clock) begin
 
             SUBSTATE_TASK2: begin
                 // Perform the second task
-                // Example: Send a debug message
-                //send_debug_message(8'h01, {"Task", " ", "2", " ", "Done"}, 9);
-
+                 debug_hex_reg = 8'h55; // example
+                 send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+                 DataPortPins <= ~DataPortPins;
                 // Move to the done state
                 substate <= SUBSTATE_DONE;
             end
@@ -272,6 +270,14 @@ always @(posedge clock) begin
         substate_done <= 1'b0; // Clear the flag when substate is inactive
     end
 end
+
+
+
+
+
+//always @(posedge clock) begin
+
+//end
 
 
 /*
