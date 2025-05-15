@@ -247,6 +247,15 @@ always @(posedge clock) begin
                 // Perform the first task
                 TopLevelDebug2 <= ~TopLevelDebug2; // Example: Toggle a debug signal
 
+                //%*DEFINE (PB_I_WRITE4 (port,buf_addr)) // writes 4 consecutive bytes on data ports
+
+                //asm_pb_i_write4_output_request:
+                //%pb_i_write4 (PORT_RED, req_red_new)
+                //%pb_i_write4 (PORT_AMB, req_amb_new)
+                //%pb_i_write4 (PORT_GRE, req_gre_new)
+
+                //pb_i_write,FFFFFFFFFF
+
                 // Move to the next task
                 substate <= SUBSTATE_TASK2;
             end
