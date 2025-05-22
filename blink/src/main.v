@@ -96,7 +96,7 @@ endtask
     );
 
 parameter CMD_LENGTH = 11; // "pb_i_write,"
-reg [7:0] command_buffer [0:CMD_LENGTH-1]; // Buffer to store the command
+reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3], command_buffer[4],
                                       command_buffer[5], command_buffer[6], command_buffer[7], command_buffer[8], command_buffer[9], command_buffer[10]};
@@ -122,16 +122,27 @@ reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 
 // Define states for the new state machine
-typedef enum logic [1:0] {
-    SUBSTATE_IDLE   = 2'b00,
-    SUBSTATE_TASK1  = 2'b01,
-    SUBSTATE_TASK2  = 2'b10,
-    SUBSTATE_DONE   = 2'b11
+typedef enum logic [2:0] {
+    SUBSTATE_IDLE      = 3'b000,
+    SUBSTATE_TASK1     = 3'b001,
+    SUBSTATE_TASK2     = 3'b010,
+    SUBSTATE_WAIT_750N = 3'b011,
+    SUBSTATE_DONE      = 3'b100
 } substate_t;
 
-reg [1:0] substate = SUBSTATE_IDLE; // State variable for the new state machine
+reg [2:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
+reg [2:0] substate_next = SUBSTATE_IDLE; // State variable for the new state machine
 reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
 reg substate_done = 1'b0; // Flag to indicate substate completion
+
+
+reg [7:0] data_bytes [0:4]; // 5 bytes (10 hex chars)
+integer i;
+integer comma_pos;
+//reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
+reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
+reg [2:0] wait_multiples         = 0;
+
 
 always @(posedge clock) begin
 
@@ -172,8 +183,8 @@ always @(posedge clock) begin
               DataPortPins   <= 8'b0;
               AddessPortPin  <= 3'b0;
               TestAddressP   <= 1'b01;
-              RdP            <= 1'b0;
-              WrP            <= 1'b0;
+              RdP            <= 1'b1;
+              WrP            <= 1'b1;
               OE_Pin         <= 1'b0;   // Enable pin of LevelShifter
            end else begin
               LampResetPin       <= 1'b0;   // release from reset state
@@ -240,36 +251,59 @@ always @(posedge clock) begin
         case (substate)
             SUBSTATE_IDLE: begin
                 // Perform initialization or idle tasks
-                substate <= SUBSTATE_TASK1; // Move to the first task
+                comma_pos = -1;
+                // the 20 is horrible.....FIX ASAP!!!
+                for (i = 0; i < 20; i = i + 1) begin
+                    if (command_buffer[i] == ",") begin
+                        comma_pos = i;
+                        break;
+                    end
+                end
+                substate <= SUBSTATE_TASK1;
             end
 
             SUBSTATE_TASK1: begin
-                // Perform the first task
                 TopLevelDebug2 <= ~TopLevelDebug2; // Example: Toggle a debug signal
 
-                //%*DEFINE (PB_I_WRITE4 (port,buf_addr)) // writes 4 consecutive bytes on data ports
+                //command_word = pb_i_write,ffaabbccddee  ff = 1 byte colour,aabbccddee = 4 data bytes
 
-                //asm_pb_i_write4_output_request:
-                //%pb_i_write4 (PORT_RED, req_red_new)
-                //%pb_i_write4 (PORT_AMB, req_amb_new)
-                //%pb_i_write4 (PORT_GRE, req_gre_new)
+                for (i = 0; i < 5; i = i + 1) begin
+                    data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
+                                  |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");
+           
+                end
 
-                //pb_i_write,FFFFFFFFFF
-
-                // Move to the next task
+                //debug_hex_reg <= data_bytes[1];
                 substate <= SUBSTATE_TASK2;
             end
 
             SUBSTATE_TASK2: begin
-                // Perform the second task
-                 debug_hex_reg = 8'h55; // example
-                 send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
-                 DataPortPins <= ~DataPortPins;
-                // Move to the done state
-                substate <= SUBSTATE_DONE;
+                //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+                //DataPortPins <= data_bytes[1];
+                DataPortPins <= ~DataPortPins;
+
+                wait_multiples <= 2;
+                substate <= SUBSTATE_WAIT_750N;
+                substate_next <= SUBSTATE_DONE;
+            end
+
+            SUBSTATE_WAIT_750N: begin
+                if(wait_multiples) begin
+                    if (substate_wait_counter < 13500000) begin  // 21
+                        substate_wait_counter <= substate_wait_counter + 1'b1;
+                    end else begin
+                        //substate <= SUBSTATE_TASK2; // Proceed after 21 cycles (~777ns)
+                        substate_wait_counter <= 0;
+                        wait_multiples <= wait_multiples -1;
+                    end
+                end else begin
+                   substate <= substate_next;
+                   //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+                end
             end
 
             SUBSTATE_DONE: begin
+                send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
                 // Indicate substate completion
                 substate_done <= 1'b1;   // Indicate substate completion
                 substate <= SUBSTATE_IDLE;
