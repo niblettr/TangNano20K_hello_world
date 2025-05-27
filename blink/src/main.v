@@ -1,12 +1,13 @@
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
-    output reg [7:0] DataPortPins,    // Data Port                 Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
-    output reg [2:0] AddessPortPin,  // Address Port              Pin28,Pin25,Pin26
+    output reg [7:0] DataPortPins,    // Data Port          Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
+    output reg [2:0] AddessPortPin,   // Address Port       Pin28,Pin25,Pin26
+    output reg [3:0] B_ID_pins,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
     output reg TestAddressP,   //                           Pin30
     output reg RdP,            // Read Enable               Pin31
     output reg WrP,            // write Enable              Pin17
-    output reg LampResetPin,       //                           Pin20
-    output reg OE_Pin,           // LevelShifter Enable       Pin19
+    output reg LampResetPin,   //                           Pin20
+    output reg OE_Pin,     // LevelShifter Enable           Pin19
     output Uart_TX_Pin,    // Transmit pin of UART          Pin55
     input  Uart_RX_Pin,    // Receive pin of UART           Pin49
     output Debug_Pin,      // Debug toggle                  Pin76
@@ -122,16 +123,22 @@ reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
 reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 
 // Define states for the new state machine
-typedef enum logic [2:0] {
-    SUBSTATE_IDLE      = 3'b000,
-    SUBSTATE_TASK1     = 3'b001,
-    SUBSTATE_TASK2     = 3'b010,
-    SUBSTATE_WAIT_750N = 3'b011,
-    SUBSTATE_DONE      = 3'b100
+typedef enum logic [3:0] {
+    SUBSTATE_IDLE      = 4'b0000,
+    SUBSTATE_TASK1     = 4'b0001,
+    SUBSTATE_TASK2     = 4'b0010,
+    SUBSTATE_WAIT_750N = 4'b0011,
+    SUBSTATE_TASK4     = 4'b0100,
+    SUBSTATE_TASK5     = 4'b0101,
+    SUBSTATE_TASK6     = 4'b0110,
+    SUBSTATE_TASK7     = 4'b0111,
+    SUBSTATE_TASK8     = 4'b1000,
+    SUBSTATE_DONE      = 4'b1001
 } substate_t;
 
-reg [2:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
-reg [2:0] substate_next = SUBSTATE_IDLE; // State variable for the new state machine
+reg [3:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
+reg [3:0] substate_next = SUBSTATE_IDLE; // State variable for the new state machine
+
 reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
 reg substate_done = 1'b0; // Flag to indicate substate completion
 
@@ -142,6 +149,7 @@ integer comma_pos;
 //reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
+reg [2:0] Card_ID                = 0;
 
 
 always @(posedge clock) begin
@@ -247,63 +255,130 @@ always @(posedge clock) begin
     endcase
 /************************************************************************************************************************/
 /************************************************************************************************************************/
+/*
+#define PORT_RED             0x00 // --000---
+#define PORT_AMB             0x08 // --001---
+#define PORT_GRE             0x10 // --010---
+#define PORT_ADC_LOW         0x18 // --011--- \_ Same Port address
+#define PORT_MUX             0x18 // --011--- /  Same Port address
+#define PORT_ADC_HIGH        0x20 // --100---
+#define PORT_TEST            0x28 // --101---
+#define PORT_RESERVED6       0x30 // --110--- Write to turn mimics ON?
+#define PORT_RESERVED7       0x38 // --101--- Write to turn mimics OFF?
+
+asm_pb_i_write4_output_request:
+%pb_i_write4 (PORT_RED, req_red_new) // writes 4 consecutive bytes on data ports
+%pb_i_write4 (PORT_AMB, req_amb_new) // writes 4 consecutive bytes on data ports
+%pb_i_write4 (PORT_GRE, req_gre_new) // writes 4 consecutive bytes on data ports
+*/
     if (substate_active) begin
         case (substate)
             SUBSTATE_IDLE: begin
-                // Perform initialization or idle tasks
-                comma_pos = -1;
-                // the 20 is horrible.....FIX ASAP!!!
-                for (i = 0; i < 20; i = i + 1) begin
+                comma_pos = -1;                
+                for (i = 0; i < 20; i = i + 1) begin     // the 20 is horrible.....FIX ASAP!!!
                     if (command_buffer[i] == ",") begin
                         comma_pos = i;
                         break;
                     end
                 end
                 substate <= SUBSTATE_TASK1;
+
             end
 
             SUBSTATE_TASK1: begin
                 TopLevelDebug2 <= ~TopLevelDebug2; // Example: Toggle a debug signal
-
                 //command_word = pb_i_write,ffaabbccddee  ff = 1 byte colour,aabbccddee = 4 data bytes
-
                 for (i = 0; i < 5; i = i + 1) begin
                     data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
-                                  |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");
-           
+                                  |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
                 end
-
-                //debug_hex_reg <= data_bytes[1];
                 substate <= SUBSTATE_TASK2;
+                Card_ID <= 0;
             end
 
-            SUBSTATE_TASK2: begin
-                //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
-                //DataPortPins <= data_bytes[1];
-                DataPortPins <= ~DataPortPins;
+            SUBSTATE_TASK2: begin // assert address & board ID bits
 
-                wait_multiples <= 2;
+                if(Card_ID == 0) begin
+                    send_debug_message(debug_hex_reg, {"0", "0", "0", "0", " ", "0", "x"}, 7);
+                    B_ID_pins <= 1;
+                end else if (Card_ID == 1) begin
+                    send_debug_message(debug_hex_reg, {"1", "0", "0", "0", " ", "0", "x"}, 7);
+                    B_ID_pins <= 2;
+                end else if (Card_ID == 2) begin
+                    send_debug_message(debug_hex_reg, {"2", "0", "0", "0", " ", "0", "x"}, 7);
+                    B_ID_pins <= 4;
+                end else begin
+                    send_debug_message(debug_hex_reg, {"4", "0", "0", "0", " ", "0", "x"}, 7);
+                    B_ID_pins <= 8;
+                end
+
+
+                AddessPortPin <= data_bytes[0]; // no need to mask out bit 4 ?
+                wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_DONE;
+                substate_next <= SUBSTATE_TASK4;
             end
 
             SUBSTATE_WAIT_750N: begin
                 if(wait_multiples) begin
-                    if (substate_wait_counter < 13500000) begin  // 21
+                    //if (substate_wait_counter < 13500000) begin  //substate <= SUBSTATE_TASK2; 
+                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns)
                         substate_wait_counter <= substate_wait_counter + 1'b1;
-                    end else begin
-                        //substate <= SUBSTATE_TASK2; // Proceed after 21 cycles (~777ns)
+                    end else begin                        
                         substate_wait_counter <= 0;
                         wait_multiples <= wait_multiples -1;
                     end
                 end else begin
                    substate <= substate_next;
-                   //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
                 end
             end
 
-            SUBSTATE_DONE: begin
+            SUBSTATE_TASK4: begin // assert data phase
+                DataPortPins <= data_bytes[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
+                wait_multiples <= 1;
+                substate <= SUBSTATE_WAIT_750N;
+                substate_next <= SUBSTATE_TASK5;
+
+            end
+
+            SUBSTATE_TASK5: begin // ASSERT WRITE PIN PHASE
+                WrP <= 0; // ACTIVE LOW
+                wait_multiples <= 2;
+                substate <= SUBSTATE_WAIT_750N;
+                substate_next <= SUBSTATE_TASK6;
                 send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+            end
+
+            SUBSTATE_TASK6: begin // RELEASE WRITE PIN PHASE
+                WrP <= 1;
+                wait_multiples <= 2;
+                substate <= SUBSTATE_WAIT_750N;
+                substate_next <= SUBSTATE_TASK7;
+            end
+
+            SUBSTATE_TASK7: begin // 
+                DataPortPins <= 255; // RELEASE THE DATA PINS
+                wait_multiples <= 1;
+                substate <= SUBSTATE_WAIT_750N;
+                substate_next <= SUBSTATE_TASK8;
+            end
+
+            SUBSTATE_TASK8: begin
+               
+               if(Card_ID < 4 - 1) begin   // 0->3 is 4 hence the -1  
+                  debug_hex_reg =  Card_ID;       
+                  Card_ID <= Card_ID +1;
+                  //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+                  substate <= SUBSTATE_TASK2; // loop back round to do remaining cards
+               end else begin
+                   substate <= SUBSTATE_DONE;
+                   //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+               end
+            end
+
+
+            SUBSTATE_DONE: begin
+                //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
                 // Indicate substate completion
                 substate_done <= 1'b1;   // Indicate substate completion
                 substate <= SUBSTATE_IDLE;
