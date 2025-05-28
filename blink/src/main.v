@@ -152,7 +152,6 @@ reg substate_done = 1'b0; // Flag to indicate substate completion
 reg [7:0] data_bytes [0:4]; // 5 bytes (10 hex chars)
 integer i;
 integer comma_pos;
-//reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
@@ -241,7 +240,7 @@ always @(posedge clock) begin
             end
         end
 
-        STATE_WAIT: begin
+        STATE_WAIT: begin // note: only one substatemachine is active at any given time...
             if (substate_done) begin
                 substate_active <= 1'b0; // Deactivate the substate machine
                 command_state <= STATE_PASS; // Transition to STATE_PASS
@@ -265,23 +264,10 @@ always @(posedge clock) begin
         end
     endcase
 /************************************************************************************************************************/
-/************************************************************************************************************************/
-/*
-#define PORT_RED             0x00 // --000---
-#define PORT_AMB             0x08 // --001---
-#define PORT_GRE             0x10 // --010---
-#define PORT_ADC_LOW         0x18 // --011--- \_ Same Port address
-#define PORT_MUX             0x18 // --011--- /  Same Port address
-#define PORT_ADC_HIGH        0x20 // --100---
-#define PORT_TEST            0x28 // --101---
-#define PORT_RESERVED6       0x30 // --110--- Write to turn mimics ON?
-#define PORT_RESERVED7       0x38 // --101--- Write to turn mimics OFF?
 
-asm_pb_i_write4_output_request:
-%pb_i_write4 (PORT_RED, req_red_new) // writes 4 consecutive bytes on data ports
-%pb_i_write4 (PORT_AMB, req_amb_new) // writes 4 consecutive bytes on data ports
-%pb_i_write4 (PORT_GRE, req_gre_new) // writes 4 consecutive bytes on data ports
-*/
+
+
+/************************************************************************************************************************/
     if (substate_active) begin
         case (substate)
             SUBSTATE_IDLE: begin
@@ -358,7 +344,7 @@ asm_pb_i_write4_output_request:
             end
 
             SUBSTATE_TASK5: begin // ASSERT WRITE PIN PHASE
-                WrP <= 0; // ACTIVE LOW
+                WrP <= 0; // active low
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK6;
@@ -405,34 +391,6 @@ asm_pb_i_write4_output_request:
         substate_done <= 1'b0; // Clear the flag when substate is inactive
     end
 end
-
-
-
-
-
-//always @(posedge clock) begin
-
-//end
-
-
-/*
-reg uart_rx_processing = 1'b0; // Flag to track if RX processing is in progress
-always @(posedge clock) begin
-    // Default assignments
-    rx_fifo_read_en  <= 1'b0;         // Deassert UART RX FIFO read enable
-    tx_fifo_write_en <= 1'b0;         // Deassert UART TX FIFO write enable
-
-    // Echo Uart RX data back out the Uart TX using the fifo
-    if (!rx_fifo_empty && !uart_rx_processing) begin  // !rx_fifo_read_en gets rid of weird echo...FIX ASAP!!!
-        rx_fifo_read_en  <= 1'b1;                  // Assert read enable to read from RX FIFO
-        tx_fifo_write_en <= 1'b1;
-        uart_rx_processing <= 1'b1;                  // Set processing flag
-        tx_fifo_data_in <= rx_fifo_data_out;       // Load RX FIFO data into UART TX
-    end else if (rx_fifo_empty) begin
-        uart_rx_processing <= 1'b0;                  // Clear processing flag when FIFO is empty
-    end
-end
-*/
 
 /********** Continuous Assignment **********/
 assign Debug_Pin = rx_sentence_received;
