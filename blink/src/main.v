@@ -101,6 +101,7 @@ endtask
         .Debug_uart(Debug_uart)
     );
 
+parameter MAX_CMD_LENGTH = 30;
 parameter CMD_LENGTH = 11; // "pb_i_write,"
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 
@@ -272,7 +273,7 @@ always @(posedge clock) begin
         case (substate)
             SUBSTATE_IDLE: begin
                 comma_pos = -1;                
-                for (i = 0; i < 20; i = i + 1) begin     // the 20 is horrible.....FIX ASAP!!!
+                for (i = 0; i < MAX_CMD_LENGTH; i = i + 1) begin
                     if (command_buffer[i] == ",") begin
                         comma_pos = i;
                         break;
