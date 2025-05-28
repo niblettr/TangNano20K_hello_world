@@ -301,20 +301,7 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_TASK2: begin // assert address & board ID bits
-
-                if(Card_ID == 0) begin
-                    B_ID_pins <= 1;
-                end else if (Card_ID == 1) begin
-                    B_ID_pins <= 2;
-                end else if (Card_ID == 2) begin
-                    B_ID_pins <= 4;
-                end else begin
-                    B_ID_pins <= 8;
-                end
-
-                // B_ID_pins <= 1 << Card_ID; probably replaced above....
-
-                
+                B_ID_pins <= 1 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= data_bytes[0]; // no need to mask out bit 4 ?
                 wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
@@ -323,7 +310,6 @@ always @(posedge clock) begin
 
             SUBSTATE_WAIT_750N: begin
                 if(wait_multiples) begin
-                    //if (substate_wait_counter < 13500000) begin  //substate <= SUBSTATE_TASK2; 
                     if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns)
                         substate_wait_counter <= substate_wait_counter + 1'b1;
                     end else begin                        
@@ -340,7 +326,6 @@ always @(posedge clock) begin
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK5;
-
             end
 
             SUBSTATE_TASK5: begin // ASSERT WRITE PIN PHASE
