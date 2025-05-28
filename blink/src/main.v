@@ -1,6 +1,7 @@
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
-    output reg [7:0] DataPortPins,    // Data Port          Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
+    //output reg [7:0] DataPortPins,    // Data Port          Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
+    inout [7:0] DataPortPins,
     output reg [2:0] AddessPortPin,   // Address Port       Pin28,Pin25,Pin26
     output reg [3:0] B_ID_pins,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
     output reg TestAddressP,   //                           Pin30
@@ -15,6 +16,10 @@ module Top_module(
 );
 
     reg TopLevelDebug2  = 0;
+
+    reg [7:0] data_out_pins;
+    wire [7:0] data_in_pins;
+    reg data_dir; // 1 = output, 0 = input
 
 
     /********** Constants **********/
@@ -133,7 +138,8 @@ typedef enum logic [3:0] {
     SUBSTATE_TASK6     = 4'b0110,
     SUBSTATE_TASK7     = 4'b0111,
     SUBSTATE_TASK8     = 4'b1000,
-    SUBSTATE_DONE      = 4'b1001
+    SUBSTATE_TEST_READ = 4'b1001,
+    SUBSTATE_DONE      = 4'b1010
 } substate_t;
 
 reg [3:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
@@ -150,6 +156,7 @@ integer comma_pos;
 reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
+reg [1:0] cmd_type               = 0;
 
 
 always @(posedge clock) begin
@@ -187,15 +194,16 @@ always @(posedge clock) begin
         STATE_INIT: begin // we want to reset fifo here then move on..
            if(reset_counter < 100) begin
               reset_counter  <= reset_counter + 1'b1;
-              LampResetPin       <= 1'b1;        // hold in reset
-              DataPortPins   <= 8'b0;
+              LampResetPin   <= 1'b1;        // hold in reset
+              data_dir       <= 0;  // input
+              data_out_pins  <= 8'b0;
               AddessPortPin  <= 3'b0;
               TestAddressP   <= 1'b01;
               RdP            <= 1'b1;
               WrP            <= 1'b1;
               OE_Pin         <= 1'b0;   // Enable pin of LevelShifter
            end else begin
-              LampResetPin       <= 1'b0;   // release from reset state
+              LampResetPin   <= 1'b0;   // release from reset state
               OE_Pin         <= 1'b1;   // Enable pin of LevelShifter
               command_state <= STATE_IDLE;
            end
@@ -207,9 +215,7 @@ always @(posedge clock) begin
                 rx_fifo_read_en <= 1'b1; // Read from RX FIFO
 
                 command_buffer[command_index] <= rx_fifo_data_out; // Store received byte
-                command_index <= command_index + 1'b1;
-                //TopLevelDebug2 <= ~TopLevelDebug2;
-              
+                command_index <= command_index + 1'b1;           
             end else if (rx_fifo_empty) begin
               uart_rx_previous_empty <= 1'b1;
             end
@@ -225,6 +231,11 @@ always @(posedge clock) begin
             if (command_word == "pb_i_write,") begin
                 substate_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT; // Transition to a wait state
+                cmd_type = 0; // write
+             end else if (command_word == "pb_i__read,") begin
+                substate_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
+                cmd_type = 1; // read
             end else begin
                 command_state <= STATE_FAIL;
             end
@@ -292,27 +303,32 @@ asm_pb_i_write4_output_request:
                     data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
                                   |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
                 end
-                substate <= SUBSTATE_TASK2;
+                 
+                if(cmd_type == 0) begin
+                    data_dir        <= 1;  // output
+                    substate <= SUBSTATE_TASK2;
+                end else begin
+                    data_dir        <= 0;  // input
+                    substate <= SUBSTATE_TEST_READ;
+                end
                 Card_ID <= 0;
             end
 
             SUBSTATE_TASK2: begin // assert address & board ID bits
 
                 if(Card_ID == 0) begin
-                    send_debug_message(debug_hex_reg, {"0", "0", "0", "0", " ", "0", "x"}, 7);
                     B_ID_pins <= 1;
                 end else if (Card_ID == 1) begin
-                    send_debug_message(debug_hex_reg, {"1", "0", "0", "0", " ", "0", "x"}, 7);
                     B_ID_pins <= 2;
                 end else if (Card_ID == 2) begin
-                    send_debug_message(debug_hex_reg, {"2", "0", "0", "0", " ", "0", "x"}, 7);
                     B_ID_pins <= 4;
                 end else begin
-                    send_debug_message(debug_hex_reg, {"4", "0", "0", "0", " ", "0", "x"}, 7);
                     B_ID_pins <= 8;
                 end
 
+                // B_ID_pins <= 1 << Card_ID; probably replaced above....
 
+                
                 AddessPortPin <= data_bytes[0]; // no need to mask out bit 4 ?
                 wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
@@ -334,7 +350,7 @@ asm_pb_i_write4_output_request:
             end
 
             SUBSTATE_TASK4: begin // assert data phase
-                DataPortPins <= data_bytes[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
+                data_out_pins <= data_bytes[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK5;
@@ -346,7 +362,6 @@ asm_pb_i_write4_output_request:
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK6;
-                send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
             end
 
             SUBSTATE_TASK6: begin // RELEASE WRITE PIN PHASE
@@ -356,30 +371,32 @@ asm_pb_i_write4_output_request:
                 substate_next <= SUBSTATE_TASK7;
             end
 
-            SUBSTATE_TASK7: begin // 
-                DataPortPins <= 255; // RELEASE THE DATA PINS
+            SUBSTATE_TASK7: begin //
+                data_dir        <= 0;  // input/RELEASE THE DATA PINS
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK8;
             end
 
-            SUBSTATE_TASK8: begin
-               
-               if(Card_ID < 4 - 1) begin   // 0->3 is 4 hence the -1  
+            SUBSTATE_TASK8: begin               
+               if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   debug_hex_reg =  Card_ID;       
                   Card_ID <= Card_ID +1;
-                  //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
                   substate <= SUBSTATE_TASK2; // loop back round to do remaining cards
                end else begin
                    substate <= SUBSTATE_DONE;
-                   //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
                end
+            end
+
+            SUBSTATE_TEST_READ: begin
+              // data_bytes[0] <= data_out_pins;
+               debug_hex_reg = data_in_pins;
+               send_debug_message(debug_hex_reg, {"R", "e", "a", "d", " ", "0", "x"}, 7);
+               substate <= SUBSTATE_DONE;
             end
 
 
             SUBSTATE_DONE: begin
-                //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
-                // Indicate substate completion
                 substate_done <= 1'b1;   // Indicate substate completion
                 substate <= SUBSTATE_IDLE;
             end
@@ -423,5 +440,9 @@ assign Debug_Pin2 = TopLevelDebug2;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
 //assign Debug_Pin = TopLevelDebug;
+
+// Assign bidirectional port with tristate buffer behavior
+assign DataPortPins = (data_dir) ? data_out_pins : 8'bz;  // drive data_out_pins if output
+assign data_in_pins = DataPortPins;                      // read pins as input
 
 endmodule
