@@ -117,7 +117,9 @@ reg [5:0] command_len = 0;
         STATE_PARSE  = 3'b010,
         STATE_WAIT   = 3'b011,
         STATE_PASS   = 3'b100,
-        STATE_FAIL   = 3'b101
+        STATE_FAIL   = 3'b101,
+        STATE_COMMA  = 3'b110,
+        STATE_PARSE2 = 3'b111
     } state_t;
 
 reg [2:0] command_state = STATE_INIT;      // State machine for command handling
@@ -223,22 +225,40 @@ always @(posedge clock) begin
             if(rx_sentence_received) begin
                 command_len <= command_index;
                 command_index <= 3'b0;        // reset to zero
-                command_state <= STATE_PARSE; // Move to command processing state
+                command_state <= STATE_COMMA; // Move to command processing state
             end
+        end
+
+        STATE_COMMA: begin
+           comma_pos = -1;                
+           for (i = 0; i < MAX_CMD_LENGTH; i = i + 1) begin
+               if (command_buffer[i] == ",") begin
+                   comma_pos = i;
+                   break;
+               end
+           end
+           command_state <= STATE_PARSE;
         end
 
         STATE_PARSE: begin
             if (command_word == "pb_i_write,") begin
-                substate_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_PARSE2; // Transition to a wait state
                 cmd_type = 0; // write
              end else if (command_word == "pb_i__read,") begin
-                substate_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_PARSE2; // Transition to a wait state
                 cmd_type = 1; // read
             end else begin
                 command_state <= STATE_FAIL;
             end
+        end
+
+        STATE_PARSE2: begin
+            for (i = 0; i < 5; i = i + 1) begin
+               data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
+                             |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
+            end
+            substate_active <= 1'b1; // Activate the new state machine
+            command_state <= STATE_WAIT; // Transition to a wait state
         end
 
         STATE_WAIT: begin // note: only one substatemachine is active at any given time...
@@ -272,33 +292,18 @@ always @(posedge clock) begin
     if (substate_active) begin
         case (substate)
             SUBSTATE_IDLE: begin
-                comma_pos = -1;                
-                for (i = 0; i < MAX_CMD_LENGTH; i = i + 1) begin
-                    if (command_buffer[i] == ",") begin
-                        comma_pos = i;
-                        break;
-                    end
-                end
+                Card_ID <= 0;
                 substate <= SUBSTATE_TASK1;
-
             end
 
-            SUBSTATE_TASK1: begin
-                TopLevelDebug2 <= ~TopLevelDebug2; // Example: Toggle a debug signal
-                //command_word = pb_i_write,ffaabbccddee  ff = 1 byte colour,aabbccddee = 4 data bytes
-                for (i = 0; i < 5; i = i + 1) begin
-                    data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
-                                  |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
-                end
-                 
+            SUBSTATE_TASK1: begin                 
                 if(cmd_type == 0) begin
                     data_dir        <= 1;  // output
                     substate <= SUBSTATE_TASK2;
                 end else begin
                     data_dir        <= 0;  // input
                     substate <= SUBSTATE_TEST_READ;
-                end
-                Card_ID <= 0;
+                end                
             end
 
             SUBSTATE_TASK2: begin // assert address & board ID bits
@@ -343,7 +348,7 @@ always @(posedge clock) begin
                 substate_next <= SUBSTATE_TASK7;
             end
 
-            SUBSTATE_TASK7: begin //
+            SUBSTATE_TASK7: begin
                 data_dir        <= 0;  // input/RELEASE THE DATA PINS
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
