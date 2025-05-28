@@ -152,7 +152,7 @@ reg substate_active = 1'b0;         // Flag to indicate if the substate machine 
 reg substate_done = 1'b0; // Flag to indicate substate completion
 
 
-reg [7:0] data_bytes [0:4]; // 5 bytes (10 hex chars)
+reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 integer i;
 integer comma_pos;
 reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
@@ -254,7 +254,7 @@ always @(posedge clock) begin
 
         STATE_PARSE2: begin
             for (i = 0; i < 5; i = i + 1) begin
-               data_bytes[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
+               command_param_data[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
                              |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
             end
             substate_active <= 1'b1; // Activate the new state machine
@@ -308,7 +308,7 @@ always @(posedge clock) begin
 
             SUBSTATE_TASK2: begin // assert address & board ID bits
                 B_ID_pins <= 1 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
-                AddessPortPin <= data_bytes[0]; // no need to mask out bit 4 ?
+                AddessPortPin <= command_param_data[0]; // no need to mask out bit 4 ?
                 wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK4;
@@ -328,7 +328,7 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_TASK4: begin // assert data phase
-                data_out_pins <= data_bytes[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
+                data_out_pins <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_TASK5;
