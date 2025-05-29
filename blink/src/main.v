@@ -42,13 +42,9 @@ module Top_module(
 task hex_to_ascii;
     input [7:0] hex_value;   // Input hex value
     begin
-        logic [7:0] high, low;
         // Append the hex value as ASCII characters
-        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
-        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
-
-        debug_hex_ascii[0] = high;
-        debug_hex_ascii[1] = low;
+        debug_hex_ascii[0] = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
+        debug_hex_ascii[1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
     end
 endtask
 
@@ -76,10 +72,14 @@ task send_debug_message;
 endtask
 
 function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
-    if      (c >= "0" && c <= "9") return logic'(c - "0");
-    else if (c >= "a" && c <= "f") return logic'(c - "a" + 4'd10);
-    else if (c >= "A" && c <= "F") return logic'(c - "A" + 4'd10);
-    else                           return 4'hF; // Invalid input
+    if (c >= "0" && c <= "9")
+        return c - "0";
+    else if (c >= "a" && c <= "f")
+        return c - "a" + 4'd10;
+    else if (c >= "A" && c <= "F")
+        return c - "A" + 4'd10;
+    else
+        return 4'hF; // invalid nibble (optional: flag error)
 endfunction
 /**********************************************************************/
 
@@ -144,25 +144,38 @@ reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 
 // Define states for the new state machine
 typedef enum logic [3:0] {
-    SUBSTATE_IDLE              = 4'b0000,
-    SUBSTATE_HANDLE_CMD_TYPE   = 4'b0001,
-    SUBSTATE_ASSERT_ADDRESS_ID = 4'b0010,
-    SUBSTATE_WAIT_750N         = 4'b0011,
-    SUBSTATE_ASSERT_DATA       = 4'b0100,
-    SUBSTATE_ASSERT_WR_ENABLE  = 4'b0101,
-    SUBSTATE_RELEASE_WR_ENABLE = 4'b0110,
-    SUBSTATE_RELEASE_DATA      = 4'b0111,
-    SUBSTATE_INC_CARD_ID_LOOP  = 4'b1000,
-    SUBSTATE_TEST_READ         = 4'b1001,
-    SUBSTATE_DONE              = 4'b1010
-} substate_t;
+    SUBSTATE_PB_I_WRITE4_IDLE              = 4'b0000,
+    SUBSTATE_PB_I_WRITE4_PRE_DELAY         = 4'b0001,
+    SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID = 4'b0010,
+    SUBSTATE_PB_I_WRITE4_WAIT_750N         = 4'b0011,
+    SUBSTATE_PB_I_WRITE4_ASSERT_DATA       = 4'b0100,
+    SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE  = 4'b0101,
+    SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE = 4'b0110,
+    SUBSTATE_PB_I_WRITE4_RELEASE_DATA      = 4'b0111,
+    SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP  = 4'b1000,
+    SUBSTATE_PB_I_WRITE4_TEST_READ         = 4'b1001,
+    SUBSTATE_PB_I_WRITE4_DONE              = 4'b1010
+} substate_pb_i_write4_t;
 
-reg [3:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
-reg [3:0] substate_next = SUBSTATE_IDLE; // State variable for the new state machine
+substate_pb_i_write4_t substate_pb_i_write4      = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
+substate_pb_i_write4_t substate_pb_i_write4_next = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 
-reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
-reg substate_done   = 1'b0;         // Flag to indicate substate completion
+//reg [3:0] substate_pb_read4      = SUBSTATE_IDLE; // State variable for the new state machine
+//reg [3:0] substate_pb_read4_next = SUBSTATE_IDLE; // State variable for the new state machine
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+reg substate_pb_i_write4_active     = 1'b0;      // Flag to indicate if the substate machine is active
+reg substate_pb_i_write4_complete   = 1'b0;  // Flag to indicate substate completion
+
+reg substate_pb_read4_active        = 1'b0;         // Flag to indicate if the substate machine is active
+reg substate_pb_read4_complete      = 1'b0;     // Flag to indicate substate completion
+
+reg substate_pb_adc4_16_active      = 1'b0;       // Flag to indicate if the substate machine is active
+reg substate_pb_adc4_16_complete    = 1'b0;   // Flag to indicate substate completion
+
+reg substate_pb_adc4_8_active       = 1'b0;        // Flag to indicate if the substate machine is active
+reg substate_pb_adc4_8_complete     = 1'b0;    // Flag to indicate substate completion
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 integer i;                          // general purpose 
@@ -274,13 +287,13 @@ always @(posedge clock) begin
 
                command_param_data[i] = {high_nibble, low_nibble};
             end
-            substate_active <= 1'b1; // Activate the new state machine
+            substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
             command_state <= STATE_WAIT; // Transition to a wait state
         end
 
         STATE_WAIT: begin // note: only one substatemachine is active at any given time...
-            if (substate_done) begin
-                substate_active <= 1'b0; // Deactivate the substate machine
+            if (substate_pb_i_write4_complete) begin
+                substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 command_state <= STATE_PASS; // Transition to STATE_PASS
             end
         end
@@ -306,34 +319,31 @@ always @(posedge clock) begin
 
 
 /************************************************************************************************************************/
-    if (substate_active) begin
-        case (substate)
-            SUBSTATE_IDLE: begin
+    if (substate_pb_i_write4_active) begin
+        case (substate_pb_i_write4)
+            SUBSTATE_PB_I_WRITE4_IDLE: begin
                 Card_ID <= 0;
-                substate <= SUBSTATE_HANDLE_CMD_TYPE;
+                data_dir        <= 1; // set data_port to output mode
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_PRE_DELAY;
+                end
+
+            SUBSTATE_PB_I_WRITE4_PRE_DELAY: begin // initial delay to account for first liner MOV     R1,#%buf_addr                
+                wait_multiples <= 1;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID;  
             end
 
-            SUBSTATE_HANDLE_CMD_TYPE: begin
-                if(cmd_type == 0) begin
-                    data_dir        <= 1;  // output
-                    substate <= SUBSTATE_ASSERT_ADDRESS_ID;
-                end else begin
-                    data_dir        <= 0;  // input
-                    substate <= SUBSTATE_TEST_READ;
-                end                
-            end
-
-            SUBSTATE_ASSERT_ADDRESS_ID: begin // assert address & board ID bits (might need a 750ns delay first... see MOV     R1,#%buf_addr (first line) ) 
+            SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= 1; // CTR_OFF in the assembler
                 RdP <= 1; // CTR_OFF in the assembler
                 wait_multiples <= 4;
-                substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_ASSERT_DATA;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_DATA;
             end
 
-            SUBSTATE_WAIT_750N: begin
+            SUBSTATE_PB_I_WRITE4_WAIT_750N: begin
                 if(wait_multiples) begin
                     if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
                         substate_wait_counter <= substate_wait_counter + 1'b1;
@@ -342,63 +352,63 @@ always @(posedge clock) begin
                         wait_multiples <= wait_multiples - 3'd1;
                     end
                 end else begin
-                   substate <= substate_next;
+                   substate_pb_i_write4 <= substate_pb_i_write4_next;
                 end
             end
 
-            SUBSTATE_ASSERT_DATA: begin
+            SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
                 data_out_pins <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
-                substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_ASSERT_WR_ENABLE;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE;
             end
 
-            SUBSTATE_ASSERT_WR_ENABLE: begin
+            SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
                 WrP <= 0; // active low
                 wait_multiples <= 2;
-                substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_RELEASE_WR_ENABLE;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE;
             end
 
-            SUBSTATE_RELEASE_WR_ENABLE: begin
+            SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE: begin
                 WrP <= 1;
                 wait_multiples <= 2;
-                substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_RELEASE_DATA;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_DATA;
             end
 
-            SUBSTATE_RELEASE_DATA: begin
+            SUBSTATE_PB_I_WRITE4_RELEASE_DATA: begin
                 data_dir        <= 0;  // input/RELEASE THE DATA PINS
                 wait_multiples <= 1;
-                substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_INC_CARD_ID_LOOP;
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP;
             end
 
-            SUBSTATE_INC_CARD_ID_LOOP: begin               
+            SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP: begin               
                if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   debug_hex_reg =  Card_ID;       
                   Card_ID <= Card_ID + 3'd1; 
-                  substate <= SUBSTATE_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
+                  substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
-                   substate <= SUBSTATE_DONE;
+                   substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_DONE;
                end
             end
 
-            SUBSTATE_TEST_READ: begin
+            SUBSTATE_PB_I_WRITE4_TEST_READ: begin
               // data_bytes[0] <= data_out_pins;
                debug_hex_reg = data_in_pins;
                send_debug_message(debug_hex_reg, {"R", "e", "a", "d", " ", "0", "x"}, 7);
-               substate <= SUBSTATE_DONE;
+               substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_DONE;
             end
 
 
-            SUBSTATE_DONE: begin
-                substate_done <= 1'b1;   // Indicate substate completion
-                substate <= SUBSTATE_IDLE;
+            SUBSTATE_PB_I_WRITE4_DONE: begin
+                substate_pb_i_write4_complete <= 1'b1;   // Indicate substate_pb_i_write4 completion
+                substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_IDLE;
             end
         endcase
     end else begin
-        substate_done <= 1'b0; // Clear the flag when substate is inactive
+        substate_pb_i_write4_complete <= 1'b0; // Clear the flag when substate_pb_i_write4 is inactive
     end
 end
 
