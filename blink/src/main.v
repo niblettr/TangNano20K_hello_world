@@ -42,9 +42,13 @@ module Top_module(
 task hex_to_ascii;
     input [7:0] hex_value;   // Input hex value
     begin
+        logic [7:0] high, low;
         // Append the hex value as ASCII characters
-        debug_hex_ascii[0] = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
-        debug_hex_ascii[1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
+        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
+        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
+
+        debug_hex_ascii[0] = high;
+        debug_hex_ascii[1] = low;
     end
 endtask
 
@@ -299,14 +303,14 @@ always @(posedge clock) begin
         end
 
         STATE_PASS: begin
-           //debug_hex_reg = 8'h55; // example
-           //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+           debug_hex_reg = 8'h56; // example
+           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
            command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
            
-           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x", debug_16hex_reg}, 11);
+           //send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x", debug_16hex_reg}, 11);
            command_state <= STATE_IDLE;
         end
 
