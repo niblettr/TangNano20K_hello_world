@@ -15,7 +15,7 @@ module Top_module(
     output Debug_Pin2      // Debug toggle                  Pin80
 );
 
-    reg TopLevelDebug2  = 0;
+    //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
 
     reg [7:0] data_out_pins;
     wire [7:0] data_in_pins;
@@ -42,9 +42,13 @@ module Top_module(
 task hex_to_ascii;
     input [7:0] hex_value;   // Input hex value
     begin
+        logic [7:0] high, low;
         // Append the hex value as ASCII characters
-        debug_hex_ascii[0] = hex_value[7:4] < 10 ? (hex_value[7:4] + "0") : (hex_value[7:4] - 10 + "A");
-        debug_hex_ascii[1] = hex_value[3:0] < 10 ? (hex_value[3:0] + "0") : (hex_value[3:0] - 10 + "A");
+        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
+        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
+
+        debug_hex_ascii[0] = high;
+        debug_hex_ascii[1] = low;
     end
 endtask
 
@@ -72,14 +76,10 @@ task send_debug_message;
 endtask
 
 function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
-    if (c >= "0" && c <= "9")
-        return c - "0";
-    else if (c >= "a" && c <= "f")
-        return c - "a" + 4'd10;
-    else if (c >= "A" && c <= "F")
-        return c - "A" + 4'd10;
-    else
-        return 4'hF; // invalid nibble (optional: flag error)
+    if      (c >= "0" && c <= "9") return logic'(c - "0");
+    else if (c >= "a" && c <= "f") return logic'(c - "a" + 4'd10);
+    else if (c >= "A" && c <= "F") return logic'(c - "A" + 4'd10);
+    else                           return 4'hF; // Invalid input
 endfunction
 /**********************************************************************/
 
@@ -108,8 +108,8 @@ endfunction
         .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
         .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
 
-        .rx_sentence_received(rx_sentence_received),       // Connect rx_sentence_received
-        .Debug_uart(Debug_uart)
+        .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
+        //.Debug_uart(Debug_uart)
     );
 
 parameter MAX_CMD_LENGTH = 30;
@@ -167,7 +167,7 @@ reg substate_done   = 1'b0;         // Flag to indicate substate completion
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 integer i;                          // general purpose 
 integer comma_pos;
-reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
+reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
 reg [1:0] cmd_type               = 0;
@@ -260,6 +260,7 @@ always @(posedge clock) begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 1; // read
             end else begin
+                debug_16hex_reg = 8'hAA; // example
                 command_state <= STATE_FAIL;
             end
         end
@@ -291,7 +292,7 @@ always @(posedge clock) begin
         end
 
         STATE_FAIL: begin
-           debug_hex_reg = 8'hAA; // example
+           
            send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x", debug_16hex_reg}, 11);
            command_state <= STATE_IDLE;
         end
@@ -323,8 +324,10 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_ASSERT_ADDRESS_ID: begin // assert address & board ID bits (might need a 750ns delay first... see MOV     R1,#%buf_addr (first line) ) 
-                B_ID_pins <= 1 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
+                WrP <= 1; // CTR_OFF in the assembler
+                RdP <= 1; // CTR_OFF in the assembler
                 wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_ASSERT_DATA;
@@ -336,28 +339,28 @@ always @(posedge clock) begin
                         substate_wait_counter <= substate_wait_counter + 1'b1;
                     end else begin                        
                         substate_wait_counter <= 0;
-                        wait_multiples <= wait_multiples -1;
+                        wait_multiples <= wait_multiples - 3'd1;
                     end
                 end else begin
                    substate <= substate_next;
                 end
             end
 
-            SUBSTATE_ASSERT_DATA: begin // assert data phase
+            SUBSTATE_ASSERT_DATA: begin
                 data_out_pins <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_ASSERT_WR_ENABLE;
             end
 
-            SUBSTATE_ASSERT_WR_ENABLE: begin // ASSERT WRITE PIN PHASE
+            SUBSTATE_ASSERT_WR_ENABLE: begin
                 WrP <= 0; // active low
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
                 substate_next <= SUBSTATE_RELEASE_WR_ENABLE;
             end
 
-            SUBSTATE_RELEASE_WR_ENABLE: begin // RELEASE WRITE PIN PHASE
+            SUBSTATE_RELEASE_WR_ENABLE: begin
                 WrP <= 1;
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
@@ -374,7 +377,7 @@ always @(posedge clock) begin
             SUBSTATE_INC_CARD_ID_LOOP: begin               
                if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   debug_hex_reg =  Card_ID;       
-                  Card_ID <= Card_ID +1;
+                  Card_ID <= Card_ID + 3'd1; 
                   substate <= SUBSTATE_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
                    substate <= SUBSTATE_DONE;
@@ -401,7 +404,7 @@ end
 
 /********** Continuous Assignment **********/
 assign Debug_Pin = rx_sentence_received;
-assign Debug_Pin2 = TopLevelDebug2;
+assign Debug_Pin2 = clock;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
 //assign Debug_Pin = TopLevelDebug;
