@@ -70,6 +70,17 @@ task send_debug_message;
         uart_tx_process <= 1'b1;                    // Trigger UART transmission
     end
 endtask
+
+function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
+    if (c >= "0" && c <= "9")
+        return c - "0";
+    else if (c >= "a" && c <= "f")
+        return c - "a" + 4'd10;
+    else if (c >= "A" && c <= "F")
+        return c - "A" + 4'd10;
+    else
+        return 4'hF; // invalid nibble (optional: flag error)
+endfunction
 /**********************************************************************/
 
     /********** UART Transmission **********/
@@ -102,24 +113,25 @@ endtask
     );
 
 parameter MAX_CMD_LENGTH = 30;
-parameter CMD_LENGTH = 11; // "pb_i_write,"
+parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 
-wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3], command_buffer[4],
-                                      command_buffer[5], command_buffer[6], command_buffer[7], command_buffer[8], command_buffer[9], command_buffer[10]};
+wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
+                                      command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
+                                      command_buffer[8], command_buffer[9], command_buffer[10]};
 
 reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len = 0;
     // Define FSM states with meaningful names
     typedef enum logic [2:0] {
-        STATE_INIT   = 3'b000,
-        STATE_IDLE   = 3'b001,
-        STATE_PARSE  = 3'b010,
-        STATE_WAIT   = 3'b011,
-        STATE_PASS   = 3'b100,
-        STATE_FAIL   = 3'b101,
-        STATE_COMMA  = 3'b110,
-        STATE_PARSE2 = 3'b111
+        STATE_INIT             = 3'b000,
+        STATE_IDLE             = 3'b001,
+        STATE_PARSE_COMMAND    = 3'b010,
+        STATE_WAIT             = 3'b011,
+        STATE_PASS             = 3'b100,
+        STATE_FAIL             = 3'b101,
+        STATE_COMMA            = 3'b110,
+        STATE_PARSE_PARAMS     = 3'b111
     } state_t;
 
 reg [2:0] command_state = STATE_INIT;      // State machine for command handling
@@ -132,28 +144,28 @@ reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 
 // Define states for the new state machine
 typedef enum logic [3:0] {
-    SUBSTATE_IDLE      = 4'b0000,
-    SUBSTATE_TASK1     = 4'b0001,
-    SUBSTATE_TASK2     = 4'b0010,
-    SUBSTATE_WAIT_750N = 4'b0011,
-    SUBSTATE_TASK4     = 4'b0100,
-    SUBSTATE_TASK5     = 4'b0101,
-    SUBSTATE_TASK6     = 4'b0110,
-    SUBSTATE_TASK7     = 4'b0111,
-    SUBSTATE_TASK8     = 4'b1000,
-    SUBSTATE_TEST_READ = 4'b1001,
-    SUBSTATE_DONE      = 4'b1010
+    SUBSTATE_IDLE              = 4'b0000,
+    SUBSTATE_HANDLE_CMD_TYPE   = 4'b0001,
+    SUBSTATE_ASSERT_ADDRESS_ID = 4'b0010,
+    SUBSTATE_WAIT_750N         = 4'b0011,
+    SUBSTATE_ASSERT_DATA       = 4'b0100,
+    SUBSTATE_ASSERT_WR_ENABLE  = 4'b0101,
+    SUBSTATE_RELEASE_WR_ENABLE = 4'b0110,
+    SUBSTATE_RELEASE_DATA      = 4'b0111,
+    SUBSTATE_INC_CARD_ID_LOOP  = 4'b1000,
+    SUBSTATE_TEST_READ         = 4'b1001,
+    SUBSTATE_DONE              = 4'b1010
 } substate_t;
 
 reg [3:0] substate      = SUBSTATE_IDLE; // State variable for the new state machine
 reg [3:0] substate_next = SUBSTATE_IDLE; // State variable for the new state machine
 
 reg substate_active = 1'b0;         // Flag to indicate if the substate machine is active
-reg substate_done = 1'b0; // Flag to indicate substate completion
+reg substate_done   = 1'b0;         // Flag to indicate substate completion
 
 
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
-integer i;
+integer i;                          // general purpose 
 integer comma_pos;
 reg [31:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
@@ -175,7 +187,7 @@ always @(posedge clock) begin
         3'b001: begin
             if (uart_tx_string_index < uart_tx_string_len) begin
                tx_fifo_data_in <= uart_tx_string[uart_tx_string_index]; // Load the current character
-               tx_fifo_write_en <= 1'b1;                          // Trigger UART transmission
+               tx_fifo_write_en <= 1'b1;                                // Trigger UART transmission
                uart_tx_string_index <= uart_tx_string_index + 1'b1;     // Move to the next character
                uart_tx_state <= 3'b011;
              end else begin
@@ -237,25 +249,29 @@ always @(posedge clock) begin
                    break;
                end
            end
-           command_state <= STATE_PARSE;
+           command_state <= STATE_PARSE_COMMAND;
         end
 
-        STATE_PARSE: begin
+        STATE_PARSE_COMMAND: begin
             if (command_word == "pb_i_write,") begin
-                command_state <= STATE_PARSE2; // Transition to a wait state
+                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 0; // write
              end else if (command_word == "pb_i__read,") begin
-                command_state <= STATE_PARSE2; // Transition to a wait state
+                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 1; // read
             end else begin
                 command_state <= STATE_FAIL;
             end
         end
 
-        STATE_PARSE2: begin
+        STATE_PARSE_PARAMS: begin
             for (i = 0; i < 5; i = i + 1) begin
-               command_param_data[i] = ((command_buffer[comma_pos+1 + i*2] > "9" ? command_buffer[comma_pos+1 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+1 + i*2] - "0") << 4)
-                             |  (command_buffer[comma_pos+2 + i*2] > "9" ? command_buffer[comma_pos+2 + i*2] - "a" + 4'd10 : command_buffer[comma_pos+2 + i*2] - "0");           
+               logic [3:0] high_nibble, low_nibble;
+
+               high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
+               low_nibble  = ascii_hex_to_nibble(command_buffer[comma_pos + 2 + i*2]);
+
+               command_param_data[i] = {high_nibble, low_nibble};
             end
             substate_active <= 1'b1; // Activate the new state machine
             command_state <= STATE_WAIT; // Transition to a wait state
@@ -293,30 +309,30 @@ always @(posedge clock) begin
         case (substate)
             SUBSTATE_IDLE: begin
                 Card_ID <= 0;
-                substate <= SUBSTATE_TASK1;
+                substate <= SUBSTATE_HANDLE_CMD_TYPE;
             end
 
-            SUBSTATE_TASK1: begin                 
+            SUBSTATE_HANDLE_CMD_TYPE: begin
                 if(cmd_type == 0) begin
                     data_dir        <= 1;  // output
-                    substate <= SUBSTATE_TASK2;
+                    substate <= SUBSTATE_ASSERT_ADDRESS_ID;
                 end else begin
                     data_dir        <= 0;  // input
                     substate <= SUBSTATE_TEST_READ;
                 end                
             end
 
-            SUBSTATE_TASK2: begin // assert address & board ID bits
+            SUBSTATE_ASSERT_ADDRESS_ID: begin // assert address & board ID bits (might need a 750ns delay first... see MOV     R1,#%buf_addr (first line) ) 
                 B_ID_pins <= 1 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
-                AddessPortPin <= command_param_data[0]; // no need to mask out bit 4 ?
+                AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 wait_multiples <= 4;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_TASK4;
+                substate_next <= SUBSTATE_ASSERT_DATA;
             end
 
             SUBSTATE_WAIT_750N: begin
                 if(wait_multiples) begin
-                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns)
+                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
                         substate_wait_counter <= substate_wait_counter + 1'b1;
                     end else begin                        
                         substate_wait_counter <= 0;
@@ -327,39 +343,39 @@ always @(posedge clock) begin
                 end
             end
 
-            SUBSTATE_TASK4: begin // assert data phase
+            SUBSTATE_ASSERT_DATA: begin // assert data phase
                 data_out_pins <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_TASK5;
+                substate_next <= SUBSTATE_ASSERT_WR_ENABLE;
             end
 
-            SUBSTATE_TASK5: begin // ASSERT WRITE PIN PHASE
+            SUBSTATE_ASSERT_WR_ENABLE: begin // ASSERT WRITE PIN PHASE
                 WrP <= 0; // active low
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_TASK6;
+                substate_next <= SUBSTATE_RELEASE_WR_ENABLE;
             end
 
-            SUBSTATE_TASK6: begin // RELEASE WRITE PIN PHASE
+            SUBSTATE_RELEASE_WR_ENABLE: begin // RELEASE WRITE PIN PHASE
                 WrP <= 1;
                 wait_multiples <= 2;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_TASK7;
+                substate_next <= SUBSTATE_RELEASE_DATA;
             end
 
-            SUBSTATE_TASK7: begin
+            SUBSTATE_RELEASE_DATA: begin
                 data_dir        <= 0;  // input/RELEASE THE DATA PINS
                 wait_multiples <= 1;
                 substate <= SUBSTATE_WAIT_750N;
-                substate_next <= SUBSTATE_TASK8;
+                substate_next <= SUBSTATE_INC_CARD_ID_LOOP;
             end
 
-            SUBSTATE_TASK8: begin               
+            SUBSTATE_INC_CARD_ID_LOOP: begin               
                if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   debug_hex_reg =  Card_ID;       
                   Card_ID <= Card_ID +1;
-                  substate <= SUBSTATE_TASK2; // loop back round to do remaining cards
+                  substate <= SUBSTATE_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
                    substate <= SUBSTATE_DONE;
                end
