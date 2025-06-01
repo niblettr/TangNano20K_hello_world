@@ -146,36 +146,64 @@ reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
 // Define states for the new state machine
 typedef enum logic [3:0] {
     SUBSTATE_PB_I_WRITE4_IDLE              = 4'b0000,
-    SUBSTATE_PB_I_WRITE4_PRE_DELAY         = 4'b0001,
-    SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID = 4'b0010,
-    SUBSTATE_PB_I_WRITE4_WAIT_750N         = 4'b0011,
-    SUBSTATE_PB_I_WRITE4_ASSERT_DATA       = 4'b0100,
-    SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE  = 4'b0101,
-    SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE = 4'b0110,
-    SUBSTATE_PB_I_WRITE4_RELEASE_DATA      = 4'b0111,
-    SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP  = 4'b1000,
-    SUBSTATE_PB_I_WRITE4_TEST_READ         = 4'b1001,
-    SUBSTATE_PB_I_WRITE4_DONE              = 4'b1010
+    SUBSTATE_PB_I_WRITE4_PRE_DELAY,
+    SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID,
+    SUBSTATE_PB_I_WRITE4_WAIT_750N,
+    SUBSTATE_PB_I_WRITE4_ASSERT_DATA,
+    SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE,
+    SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE,
+    SUBSTATE_PB_I_WRITE4_RELEASE_DATA,
+    SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP,
+    SUBSTATE_PB_I_WRITE4_TEST_READ,
+    SUBSTATE_PB_I_WRITE4_DONE
 } substate_pb_i_write4_t;
+
+typedef enum logic [3:0] {
+    SUBSTATE_PB_READ4_IDLE              = 4'b0000,
+    SUBSTATE_PB_READ4_PRE_DELAY,
+    SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID,
+    SUBSTATE_PB_READ4_WAIT_750N,
+    SUBSTATE_PB_READ4_ASSERT_DATA,
+    SUBSTATE_PB_READ4_ASSERT_WR_ENABLE,
+    SUBSTATE_PB_READ4_RELEASE_WR_ENABLE,
+    SUBSTATE_PB_READ4_RELEASE_DATA,
+    SUBSTATE_PB_READ4_INC_CARD_ID_LOOP,
+    SUBSTATE_PB_READ4_TEST_READ,
+    SUBSTATE_PB_READ4_DONE              
+} substate_pb_read4_t;
+
+typedef enum logic [3:0] {
+    SUBSTATE_PB_ADC4_IDLE              = 4'b0000,
+    SUBSTATE_PB_ADC4_PRE_DELAY,
+    SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID,
+    SUBSTATE_PB_ADC4_WAIT_750N,
+    SUBSTATE_PB_ADC4_ASSERT_DATA,
+    SUBSTATE_PB_ADC4_ASSERT_WR_ENABLE,
+    SUBSTATE_PB_ADC4_RELEASE_WR_ENABLE,
+    SUBSTATE_PB_ADC4_RELEASE_DATA,
+    SUBSTATE_PB_ADC4_INC_CARD_ID_LOOP,
+    SUBSTATE_PB_ADC4_TEST_READ,
+    SUBSTATE_PB_ADC4_DONE              
+} substate_pb_adc4_t;
 
 substate_pb_i_write4_t substate_pb_i_write4      = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 substate_pb_i_write4_t substate_pb_i_write4_next = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 
-//reg [3:0] substate_pb_read4      = SUBSTATE_IDLE; // State variable for the new state machine
-//reg [3:0] substate_pb_read4_next = SUBSTATE_IDLE; // State variable for the new state machine
+substate_pb_read4_t substate_pb_read4      = SUBSTATE_PB_READ4_IDLE; // State variable for the new state machine
+substate_pb_read4_t substate_pb_read4_next = SUBSTATE_PB_READ4_IDLE; // State variable for the new state machine
+
+substate_pb_adc4_t substate_pb_adc4      = SUBSTATE_PB_ADC4_IDLE; // State variable for the new state machine
+substate_pb_adc4_t substate_pb_adc4_next = SUBSTATE_PB_ADC4_IDLE; // State variable for the new state machine
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 reg substate_pb_i_write4_active     = 1'b0;      // Flag to indicate if the substate machine is active
-reg substate_pb_i_write4_complete   = 1'b0;  // Flag to indicate substate completion
-
 reg substate_pb_read4_active        = 1'b0;         // Flag to indicate if the substate machine is active
-reg substate_pb_read4_complete      = 1'b0;     // Flag to indicate substate completion
+reg substate_pb_adc4_active      = 1'b0;       // Flag to indicate if the substate machine is active
 
-reg substate_pb_adc4_16_active      = 1'b0;       // Flag to indicate if the substate machine is active
-reg substate_pb_adc4_16_complete    = 1'b0;   // Flag to indicate substate completion
+reg substate_pb_i_write4_complete    = 1'b0;   // Flag to indicate substate completion
+reg substate_pb_read4_complete    = 1'b0;   // Flag to indicate substate completion
+reg substate_pb_adc4_complete    = 1'b0;   // Flag to indicate substate completion
 
-reg substate_pb_adc4_8_active       = 1'b0;        // Flag to indicate if the substate machine is active
-reg substate_pb_adc4_8_complete     = 1'b0;    // Flag to indicate substate completion
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
@@ -270,9 +298,12 @@ always @(posedge clock) begin
             if (command_word == "pb_i_write,") begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 0; // write
-             end else if (command_word == "pb_i__read,") begin
+             end else if (command_word == "pb_i_read,") begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 1; // read
+             end else if (command_word == "pb_i_adc4,") begin
+                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
+                cmd_type = 2; // adc4
             end else begin
                 debug_16hex_reg = 8'hAA; // example
                 command_state <= STATE_FAIL;
@@ -295,19 +326,21 @@ always @(posedge clock) begin
         STATE_WAIT: begin // note: only one substatemachine is active at any given time...
             if (substate_pb_i_write4_complete) begin
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
+                substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
+                substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
                 command_state <= STATE_PASS; // Transition to STATE_PASS
             end
         end
 
         STATE_PASS: begin
            debug_hex_reg = 8'h56; // example
-           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);           
            command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
-           
-           //send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x", debug_16hex_reg}, 11);
+           debug_hex_reg = 8'h54; // example
+           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 11);
            command_state <= STATE_IDLE;
         end
 
@@ -316,22 +349,22 @@ always @(posedge clock) begin
         end
     endcase
 /************************************************************************************************************************/
-
-
-
+///////
+///////
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 /************************************************************************************************************************/
     if (substate_pb_i_write4_active) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
-                Card_ID <= 0;
-                data_dir        <= 1; // set data_port to output mode
+                Card_ID  <= 0;
+                data_dir <= 1; // set data_port to output mode
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_PRE_DELAY;
                 end
 
             SUBSTATE_PB_I_WRITE4_PRE_DELAY: begin // initial delay to account for first liner MOV     R1,#%buf_addr                
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
-                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID;  
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID;
             end
 
             SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
@@ -404,13 +437,55 @@ always @(posedge clock) begin
 
 
             SUBSTATE_PB_I_WRITE4_DONE: begin
+                send_debug_message(debug_hex_reg, {"H", "e", "r", "e", " ", "0", "x"}, 7);
                 substate_pb_i_write4_complete <= 1'b1;   // Indicate substate_pb_i_write4 completion
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_IDLE;
             end
         endcase
     end else begin
         substate_pb_i_write4_complete <= 1'b0; // Clear the flag when substate_pb_i_write4 is inactive
-    end
+    end // end of if (substate_pb_i_write4_active) begin
+/************************************************************************************************************************/
+
+
+
+/************************************************************************************************************************/
+    if (substate_pb_read4_active) begin
+        case (substate_pb_read4)
+            SUBSTATE_PB_READ4_IDLE: begin
+                Card_ID <= 0;
+                data_dir        <= 1; // set data_port to output mode
+                substate_pb_read4 <= SUBSTATE_PB_READ4_PRE_DELAY;
+                end
+
+
+        endcase
+    end else begin
+        substate_pb_read4_complete <= 1'b0; // Clear the flag when substate_pb_i_read4 is inactive
+    end // end of if (substate_pb_i_read4_active) begin
+/************************************************************************************************************************/
+
+
+
+/************************************************************************************************************************/
+    if (substate_pb_adc4_active) begin
+        case (substate_pb_adc4)
+            SUBSTATE_PB_READ4_IDLE: begin
+                Card_ID <= 0;
+                data_dir        <= 1; // set data_port to output mode
+                substate_pb_adc4 <= SUBSTATE_PB_ADC4_PRE_DELAY;
+                end
+
+
+        endcase
+    end else begin
+        substate_pb_adc4_complete <= 1'b0; // Clear the flag when substate_pb_i_read4 is inactive
+    end // end of if (substate_pb_i_read4_active) begin
+/************************************************************************************************************************/
+
+
+
+/************************************************************************************************************************/
 end
 
 /********** Continuous Assignment **********/
