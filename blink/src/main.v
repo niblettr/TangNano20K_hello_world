@@ -154,7 +154,6 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE,
     SUBSTATE_PB_I_WRITE4_RELEASE_DATA,
     SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_I_WRITE4_TEST_READ,
     SUBSTATE_PB_I_WRITE4_DONE
 } substate_pb_i_write4_t;
 
@@ -298,10 +297,10 @@ always @(posedge clock) begin
             if (command_word == "pb_i_write,") begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 0; // write
-             end else if (command_word == "pb_i_read,") begin
+             end else if (command_word == "pb_i__read,") begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 1; // read
-             end else if (command_word == "pb_i_adc4,") begin
+             end else if (command_word == "pb_i__adc4,") begin
                 command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
                 cmd_type = 2; // adc4
             end else begin
@@ -334,7 +333,7 @@ always @(posedge clock) begin
 
         STATE_PASS: begin
            debug_hex_reg = 8'h56; // example
-           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);           
+           //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);           
            command_state <= STATE_IDLE;
         end
 
@@ -428,14 +427,6 @@ always @(posedge clock) begin
                end
             end
 
-            SUBSTATE_PB_I_WRITE4_TEST_READ: begin
-              // data_bytes[0] <= data_out_pins;
-               debug_hex_reg = data_in_pins;
-               send_debug_message(debug_hex_reg, {"R", "e", "a", "d", " ", "0", "x"}, 7);
-               substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_DONE;
-            end
-
-
             SUBSTATE_PB_I_WRITE4_DONE: begin
                 send_debug_message(debug_hex_reg, {"H", "e", "r", "e", " ", "0", "x"}, 7);
                 substate_pb_i_write4_complete <= 1'b1;   // Indicate substate_pb_i_write4 completion
@@ -457,7 +448,11 @@ always @(posedge clock) begin
                 data_dir        <= 1; // set data_port to output mode
                 substate_pb_read4 <= SUBSTATE_PB_READ4_PRE_DELAY;
                 end
-
+            SUBSTATE_PB_READ4_DONE: begin
+                send_debug_message(debug_hex_reg, {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
+                substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
+                substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
+            end
 
         endcase
     end else begin
