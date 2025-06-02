@@ -184,6 +184,11 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_ADC4_DONE              
 } substate_pb_adc4_t;
 
+typedef enum logic [1:0] {
+    DIR_INPUT  = 0,
+    DIR_OUTPUT = 1          
+} dir_mode_t;
+
 substate_pb_i_write4_t substate_pb_i_write4      = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 substate_pb_i_write4_t substate_pb_i_write4_next = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 
@@ -356,7 +361,7 @@ always @(posedge clock) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
                 Card_ID  <= 0;
-                data_dir <= 1; // set data_port to output mode
+                data_dir <= DIR_OUTPUT;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_PRE_DELAY;
                 end
 
@@ -411,7 +416,7 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_PB_I_WRITE4_RELEASE_DATA: begin
-                data_dir        <= 0;  // input/RELEASE THE DATA PINS
+                data_dir        <= DIR_INPUT;  // back to input mode
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP;
@@ -459,7 +464,7 @@ MOVX    @DPTR,A               ; store data to DPR
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
                 Card_ID  <= 0; // start from first card
-                data_dir <= 0; // set data_port to output mode
+                data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
                 end
 
@@ -503,7 +508,7 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_DONE: begin
-                send_debug_message(debug_hex_reg, {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
+                send_debug_message(command_param_data[Card_ID], {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
             end
