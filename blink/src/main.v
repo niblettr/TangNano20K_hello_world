@@ -161,7 +161,7 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_READ4_PRE_DELAY,
     SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID,
     SUBSTATE_PB_READ4_WAIT_750N,
-    SUBSTATE_PB_READ4_ASSERT_DATA,
+    SUBSTATE_PB_READ4_READ_DATA,
     SUBSTATE_PB_READ4_ASSERT_WR_ENABLE,
     SUBSTATE_PB_READ4_RELEASE_WR_ENABLE,
     SUBSTATE_PB_READ4_RELEASE_DATA,
@@ -210,6 +210,7 @@ integer comma_pos;
 reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
+reg [1:0] CommandType            = 0;
 
 
 always @(posedge clock) begin
@@ -292,7 +293,7 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE_COMMAND: begin
-            for (i = 0; i < 5; i = i + 1) begin
+            for (i = 0; i < 5; i = i + 1) begin // niblett the 5 should be a constant!!!!!!!!!!!!!!!!!!
                logic [3:0] high_nibble, low_nibble;
 
                high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
@@ -307,7 +308,12 @@ always @(posedge clock) begin
              end else if (command_word == "pb_i__read,") begin
                 substate_pb_read4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT; // Transition to a wait state
-             end else if (command_word == "pb_i__adc4,") begin
+             end else if (command_word == "pb_adc4_16,") begin
+                CommandType = 0;
+                substate_pb_adc4_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
+             end else if (command_word == "pb_adc4_08,") begin
+                CommandType = 1;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT; // Transition to a wait state
             end else begin
@@ -435,13 +441,66 @@ always @(posedge clock) begin
 
 
 /************************************************************************************************************************/
+/*
+; (port) defines port address to be read (same for all boards)
+; (buf_addr) defines address of data input buffer, data will be stored at contiguous
+; addresses
+; data buffer addresses must be in idata segment
+[pb_read4](port,buf_adrr) x4 as there are 4 boards
+MOV     P1,#BOARD_4 OR %port OR RD_ON
+MOV     DPTR,#%buf_adrr
+MOVX    A,@R0                 ; read data from bus
+SETB    PB_RD                 ; read inactive
+MOVX    @DPTR,A               ; store data to DPR
+[loop 3 more times to do remaining cards (4 in total)]
+*/
+
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
-                Card_ID <= 0;
-                data_dir        <= 1; // set data_port to output mode
-                substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
+                Card_ID  <= 0; // start from first card
+                data_dir <= 0; // set data_port to output mode
+                substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
                 end
+
+            SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
+                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
+                WrP <= 1; // Write disabled
+                RdP <= 0; // Read enable
+                wait_multiples <= 1;
+                substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
+                substate_pb_read4_next <= SUBSTATE_PB_READ4_READ_DATA;
+            end
+
+            SUBSTATE_PB_READ4_WAIT_750N: begin
+                if(wait_multiples) begin
+                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
+                        substate_wait_counter <= substate_wait_counter + 1'b1;
+                    end else begin                        
+                        substate_wait_counter <= 0;
+                        wait_multiples <= wait_multiples - 3'd1;
+                    end
+                end else begin
+                   substate_pb_read4 <= substate_pb_read4_next;
+                end
+            end
+
+            SUBSTATE_PB_READ4_READ_DATA: begin
+               command_param_data[Card_ID] <= data_out_pins; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< niblett
+               wait_multiples <= 1;
+               substate_pb_read4_next <= SUBSTATE_PB_READ4_INC_CARD_ID_LOOP;
+               substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
+            end
+
+            SUBSTATE_PB_READ4_INC_CARD_ID_LOOP: begin               
+               if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1
+                  Card_ID <= Card_ID + 3'd1; 
+                  substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
+               end else begin
+                   substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
+               end
+            end
 
             SUBSTATE_PB_READ4_DONE: begin
                 send_debug_message(debug_hex_reg, {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
@@ -458,16 +517,85 @@ always @(posedge clock) begin
 
 
 /************************************************************************************************************************/
+/*
+; mux_inp                   defines Analog Muxer channel
+; buf_addr                  defines address for storing adc output from 1. board
+; buf_addr + offset1        defines address for storing adc output from 2. board
+; buf_addr + offset2        defines address for storing adc output from 3. board
+; buf_addr + offset3        defines address for storing adc output from 4. board
+[pb_adc4_16] (mux_inp, buf_addr, offset1, offset2, offset3)
+(
+MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
+MOV     A,#%mux_inp
+;Send the required data to the multiplexer latches...
+MOVX    @R0,A                 ; output mux-port
+CLR     DIR_OUT               ; switch data on Phase Bus
+CLR     PB_WR                 ; SETB WR activ
+NOP                           ; make pulse longer
+SETB    PB_WR                 ; SETB WR passiv
+NOP                           ; wait until mux-out stable
+NOP
+NOP
+NOP
+;Start the ADC conversion now mux-out is stable...
+CLR     PB_WR                 ; SETB WR activ
+NOP                           ; make pulse longer
+SETB    PB_WR                 ; SETB WR passiv
+;Now read the data back from all the boards...
+SETB    DIR_OUT               ; Switch Phase Bus for input
+LOOP4
+MOV     P1,#BOARD_1 OR PORT_ADC_HIGH OR RD_ON
+MOV     DPTR,#%buf_addr
+MOVX    A,@R0                 ; read data from bus
+SETB    PB_RD                 ; read inactive
+MOVX    @DPTR,A               ; store data to DPR
+MOV     P1,#BOARD_1 OR PORT_ADC_LOW OR RD_ON
+INC     DPTR
+MOVX    A,@R0                 ; read data from bus
+SETB    PB_RD                 ; read inactive
+MOVX    @DPTR,A               ; store data to DPR
+GOTO LOOP4
+*/
+    // handles the pb_adc4_16 & pb_adc4_8
     if (substate_pb_adc4_active) begin
         case (substate_pb_adc4)
             SUBSTATE_PB_ADC4_IDLE: begin
                 Card_ID <= 0;
                 data_dir        <= 1; // set data_port to output mode
-                substate_pb_adc4 <= SUBSTATE_PB_ADC4_DONE;
+                wait_multiples <= 3;
+                substate_pb_adc4_next = SUBSTATE_PB_ADC4_DONE;
+                substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
                 end
 
+            SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
+                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
+                WrP <= 1; // CTR_OFF in the assembler
+                RdP <= 1; // CTR_OFF in the assembler
+                wait_multiples <= 1;
+                substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
+                substate_pb_adc4_next <= SUBSTATE_PB_ADC4_DONE; // <<<<<<<<<<<<<<<<<<<<<<
+            end
+
+            SUBSTATE_PB_ADC4_WAIT_750N: begin
+                if(wait_multiples) begin
+                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
+                        substate_wait_counter <= substate_wait_counter + 1'b1;
+                    end else begin                        
+                        substate_wait_counter <= 0;
+                        wait_multiples <= wait_multiples - 3'd1;
+                    end
+                end else begin
+                   substate_pb_adc4 <= substate_pb_adc4_next;
+                end
+            end
             SUBSTATE_PB_ADC4_DONE: begin
-                send_debug_message(debug_hex_reg, {"A", "D", "C", " ", "0", "x"}, 6);
+                if(CommandType == 0) begin
+                   send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "1", "6", " ", "0", "x"}, 10);
+                end else begin
+                   send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "8", " ", "0", "x"}, 9);
+                end
+
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_adc4 completion
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_IDLE;
             end
