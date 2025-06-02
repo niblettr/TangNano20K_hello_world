@@ -131,8 +131,7 @@ reg [5:0] command_len = 0;
         STATE_WAIT             = 3'b011,
         STATE_PASS             = 3'b100,
         STATE_FAIL             = 3'b101,
-        STATE_COMMA            = 3'b110,
-        STATE_PARSE_PARAMS     = 3'b111
+        STATE_FIND_COMMA       = 3'b110
     } state_t;
 
 reg [2:0] command_state = STATE_INIT;      // State machine for command handling
@@ -211,7 +210,6 @@ integer comma_pos;
 reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
-reg [1:0] cmd_type               = 0;
 
 
 always @(posedge clock) begin
@@ -278,11 +276,11 @@ always @(posedge clock) begin
             if(rx_sentence_received) begin
                 command_len <= command_index;
                 command_index <= 3'b0;        // reset to zero
-                command_state <= STATE_COMMA; // Move to command processing state
+                command_state <= STATE_FIND_COMMA; // Move to command processing state
             end
         end
 
-        STATE_COMMA: begin
+        STATE_FIND_COMMA: begin
            comma_pos = -1;                
            for (i = 0; i < MAX_CMD_LENGTH; i = i + 1) begin
                if (command_buffer[i] == ",") begin
@@ -294,22 +292,6 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE_COMMAND: begin
-            if (command_word == "pb_i_write,") begin
-                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
-                cmd_type = 0; // write
-             end else if (command_word == "pb_i__read,") begin
-                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
-                cmd_type = 1; // read
-             end else if (command_word == "pb_i__adc4,") begin
-                command_state <= STATE_PARSE_PARAMS; // Transition to a wait state
-                cmd_type = 2; // adc4
-            end else begin
-                debug_16hex_reg = 8'hAA; // example
-                command_state <= STATE_FAIL;
-            end
-        end
-
-        STATE_PARSE_PARAMS: begin
             for (i = 0; i < 5; i = i + 1) begin
                logic [3:0] high_nibble, low_nibble;
 
@@ -318,12 +300,24 @@ always @(posedge clock) begin
 
                command_param_data[i] = {high_nibble, low_nibble};
             end
-            substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
-            command_state <= STATE_WAIT; // Transition to a wait state
+
+            if (command_word == "pb_i_write,") begin
+                substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
+             end else if (command_word == "pb_i__read,") begin
+                substate_pb_read4_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
+             end else if (command_word == "pb_i__adc4,") begin
+                substate_pb_adc4_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT; // Transition to a wait state
+            end else begin
+                debug_16hex_reg = 8'hAA; // example
+                command_state <= STATE_FAIL;
+            end
         end
 
         STATE_WAIT: begin // note: only one substatemachine is active at any given time...
-            if (substate_pb_i_write4_complete) begin
+            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
@@ -339,7 +333,7 @@ always @(posedge clock) begin
 
         STATE_FAIL: begin
            debug_hex_reg = 8'h54; // example
-           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 11);
+           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
            command_state <= STATE_IDLE;
         end
 
@@ -428,7 +422,7 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_PB_I_WRITE4_DONE: begin
-                send_debug_message(debug_hex_reg, {"H", "e", "r", "e", " ", "0", "x"}, 7);
+                send_debug_message(debug_hex_reg, {"W", "r", "i", "t", "e", " ", "0", "x"}, 8);
                 substate_pb_i_write4_complete <= 1'b1;   // Indicate substate_pb_i_write4 completion
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_IDLE;
             end
@@ -446,8 +440,9 @@ always @(posedge clock) begin
             SUBSTATE_PB_READ4_IDLE: begin
                 Card_ID <= 0;
                 data_dir        <= 1; // set data_port to output mode
-                substate_pb_read4 <= SUBSTATE_PB_READ4_PRE_DELAY;
+                substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
                 end
+
             SUBSTATE_PB_READ4_DONE: begin
                 send_debug_message(debug_hex_reg, {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
@@ -465,12 +460,17 @@ always @(posedge clock) begin
 /************************************************************************************************************************/
     if (substate_pb_adc4_active) begin
         case (substate_pb_adc4)
-            SUBSTATE_PB_READ4_IDLE: begin
+            SUBSTATE_PB_ADC4_IDLE: begin
                 Card_ID <= 0;
                 data_dir        <= 1; // set data_port to output mode
-                substate_pb_adc4 <= SUBSTATE_PB_ADC4_PRE_DELAY;
+                substate_pb_adc4 <= SUBSTATE_PB_ADC4_DONE;
                 end
 
+            SUBSTATE_PB_ADC4_DONE: begin
+                send_debug_message(debug_hex_reg, {"A", "D", "C", " ", "0", "x"}, 6);
+                substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_adc4 completion
+                substate_pb_adc4 <= SUBSTATE_PB_ADC4_IDLE;
+            end
 
         endcase
     end else begin
