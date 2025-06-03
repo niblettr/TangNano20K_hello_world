@@ -545,7 +545,7 @@ MOVX    @DPTR,A               ; store data to DPR
                                          ascii_out[4], ascii_out[5], ascii_out[6], ascii_out[7], 8'h0D, 8'h0A};
 
                 uart_tx_string_len  <= 21;
-                uart_tx_process     <= 1'b1;                    // Trigger UART transmission
+                uart_tx_process     <= 1'b1;   // Trigger UART transmission
 
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
@@ -634,9 +634,29 @@ GOTO LOOP4
             end
             SUBSTATE_PB_ADC4_DONE: begin
                 if(CommandType == 0) begin
-                   send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "1", "6", " ", "0", "x"}, 10);
+
+                // send response back
+                hex_to_ascii(Read_Data_buffer, 4, ascii_out);
+                uart_tx_string[0:7]  <={"a", "d", "c", "4", "_", "1", "6", ","};
+                uart_tx_string[8:17] <={ascii_out[0], ascii_out[1], ascii_out[2], ascii_out[3], 
+                                        ascii_out[4], ascii_out[5], ascii_out[6], ascii_out[7], 8'h0D, 8'h0A};
+
+                uart_tx_string_len  <= 18;
+                uart_tx_process     <= 1'b1;   // Trigger UART transmission
+
+                   //send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "1", "6", " ", "0", "x"}, 10);
                 end else begin
-                   send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "8", " ", "0", "x"}, 9);
+                  // send_debug_message(debug_hex_reg, {"A", "D", "C", "4", "_", "8", " ", "0", "x"}, 9);
+
+                hex_to_ascii(Read_Data_buffer, 4, ascii_out);
+                uart_tx_string[0:6]  <={"a", "d", "c", "4", "_", "8", ","};
+                uart_tx_string[7:16] <={ascii_out[0], ascii_out[1], ascii_out[2], ascii_out[3], 
+                                        ascii_out[4], ascii_out[5], ascii_out[6], ascii_out[7], 8'h0D, 8'h0A};
+
+                uart_tx_string_len  <= 17;
+                uart_tx_process     <= 1'b1;   // Trigger UART transmission
+
+
                 end
 
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_adc4 completion
