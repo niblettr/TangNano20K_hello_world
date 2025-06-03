@@ -35,7 +35,7 @@ module Top_module(
 
     reg [7:0] debug_hex_reg;
     reg [7:0] hex_as_ascii_word [0:1] = "00";
-    reg [7:0] ascii_out_debug [7:0];
+    reg [7:0] ascii_out [7:0];
 /**********************************************************************/
 task hex_to_ascii_task;
     input [7:0] hex_value;   // Input hex value
@@ -73,7 +73,7 @@ task send_debug_message;
     end
 endtask
 
-task bytes_to_ascii;
+task hex_to_ascii;
     input  [7:0] in_bytes [0:3];   // Input byte array (4 bytes)
     input  integer num_bytes;      // Number of bytes to convert (should be 4)
     output [7:0] out_ascii [0:7];  // Output ASCII array (8 chars: 2 per byte)
@@ -538,12 +538,11 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_DONE: begin
-
-                bytes_to_ascii(Read_Data_buffer, 4, ascii_out_debug);
-
+                // send response back
+                hex_to_ascii(Read_Data_buffer, 4, ascii_out);
                 uart_tx_string[0:10]  <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ","};
-                uart_tx_string[11:20] <={ascii_out_debug[0], ascii_out_debug[1], ascii_out_debug[2], ascii_out_debug[3], 
-                                         ascii_out_debug[4], ascii_out_debug[5], ascii_out_debug[6], ascii_out_debug[7], 8'h0D, 8'h0A};
+                uart_tx_string[11:20] <={ascii_out[0], ascii_out[1], ascii_out[2], ascii_out[3], 
+                                         ascii_out[4], ascii_out[5], ascii_out[6], ascii_out[7], 8'h0D, 8'h0A};
 
                 uart_tx_string_len  <= 21;
                 uart_tx_process     <= 1'b1;                    // Trigger UART transmission
