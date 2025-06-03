@@ -35,7 +35,7 @@ module uart #(
 
     fifo #(
         .DATA_WIDTH(8),
-        .DEPTH(64)
+        .DEPTH(32)
     ) fifo_tx_inst (
         .clock(clock),
         .reset(tx_fifo_reset),
@@ -50,7 +50,7 @@ module uart #(
 
     fifo #(
         .DATA_WIDTH(8),
-        .DEPTH(64)
+        .DEPTH(32)
     ) fifo_rx_inst (
         .clock(clock),
         .reset(rx_fifo_reset),
@@ -95,7 +95,7 @@ module uart #(
 
     // Internal registers for transmission
     reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
-    reg [3:0] bit_index = 0;                 // Index for bits being transmitted
+    reg [7:0] bit_index = 0;                 // Index for bits being transmitted
     reg [9:0] tx_shift_reg = 10'b1111111111; // Shift register for start, data, and stop bits
     reg transmitting = 1'b0;                 // Indicates if UART is currently transmitting
 
@@ -136,7 +136,7 @@ module uart #(
 
     // Internal registers for reception
     reg [15:0] rx_baud_counter = 0;            // Counter for baud rate timing during reception
-    reg [3:0]  rx_bit_index = 0;               // Index for bits being received
+    reg [7:0]  rx_bit_index = 0;               // Index for bits being received
     reg [7:0]  rx_shift_reg = 8'b0;            // Shift register for receiving data
     reg        receiving = 1'b0;               // Indicates if UART is currently receiving
 

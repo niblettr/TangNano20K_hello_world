@@ -1,7 +1,6 @@
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
-    //output reg [7:0] DataPortPins,    // Data Port          Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
-    inout [7:0] DataPortPins,
+    inout [7:0] DataPortPins,        //                     Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
     output reg [2:0] AddessPortPin,   // Address Port       Pin28,Pin25,Pin26
     output reg [3:0] B_ID_pins,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
     output reg TestAddressP,   //                           Pin30
@@ -17,8 +16,8 @@ module Top_module(
 
     //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
 
-    reg [7:0] data_out_pins;
-    wire [7:0] data_in_pins;
+    reg [7:0]  Data_Out_Port;
+    wire [7:0] Data_In_Port;
     reg data_dir; // 1 = output, 0 = input
 
 
@@ -30,16 +29,15 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
     /********** UART debug String **********/
-    reg [3:0] uart_tx_string_index = 0; // Index for string transmission
+    reg [7:0] uart_tx_string_index = 0; // Index for string transmission
     reg [7:0] uart_tx_string [0:63];
     reg [7:0] uart_tx_string_len;
 
     reg [7:0] debug_hex_reg;
-    reg [15:0] debug_16hex_reg = "AA";
-
-    reg [7:0] debug_hex_ascii [0:1] = "AA";
+    reg [7:0] hex_as_ascii_word [0:1] = "00";
+    reg [7:0] ascii_out_debug [7:0];
 /**********************************************************************/
-task hex_to_ascii;
+task hex_to_ascii_task;
     input [7:0] hex_value;   // Input hex value
     begin
         logic [7:0] high, low;
@@ -47,8 +45,8 @@ task hex_to_ascii;
         high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
         low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
 
-        debug_hex_ascii[0] = high;
-        debug_hex_ascii[1] = low;
+        hex_as_ascii_word[0] = high;
+        hex_as_ascii_word[1] = low;
     end
 endtask
 
@@ -59,7 +57,7 @@ task send_debug_message;
     integer i;                   // Loop variable
     begin
         debug_hex_reg = debug_reg_value; // Set the debug register
-        hex_to_ascii(debug_hex_reg);     // Convert debug register to ASCII
+        hex_to_ascii_task(debug_hex_reg);     // Convert debug register to ASCII
         uart_tx_string_len = message_len + 4; // Message length + 2 hex chars + CR + LF
         
         // Copy the message into the UART string
@@ -67,11 +65,27 @@ task send_debug_message;
             uart_tx_string[i] <= message[(message_len - 1 - i) * 8 +: 8];
         end
         
-        uart_tx_string[message_len] <= debug_hex_ascii[0]; // Add hex MSB
-        uart_tx_string[message_len+1] <= debug_hex_ascii[1]; // Add hex LSB
+        uart_tx_string[message_len]   <= hex_as_ascii_word[0]; // Add hex MSB
+        uart_tx_string[message_len+1] <= hex_as_ascii_word[1]; // Add hex LSB
         uart_tx_string[message_len+2] <= 8'h0D;     // Add carriage return
         uart_tx_string[message_len+3] <= 8'h0A;     // Add line feed
         uart_tx_process <= 1'b1;                    // Trigger UART transmission
+    end
+endtask
+
+task bytes_to_ascii;
+    input  [7:0] in_bytes [0:3];   // Input byte array (4 bytes)
+    input  integer num_bytes;      // Number of bytes to convert (should be 4)
+    output [7:0] out_ascii [0:7];  // Output ASCII array (8 chars: 2 per byte)
+    integer i;
+    reg [7:0] high, low;
+    begin
+        for (i = 0; i < num_bytes; i = i + 1) begin
+            high = (in_bytes[i][7:4] < 10) ? (in_bytes[i][7:4] + 8'd48) : (in_bytes[i][7:4] - 4'd10 + 8'd65);
+            low  = (in_bytes[i][3:0] < 10) ? (in_bytes[i][3:0] + 8'd48) : (in_bytes[i][3:0] - 4'd10 + 8'd65);
+            out_ascii[i*2]   = high;
+            out_ascii[i*2+1] = low;
+        end
     end
 endtask
 
@@ -80,7 +94,7 @@ function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
     else if (c >= "a" && c <= "f") return c - "a" + 4'd10;
     else if (c >= "A" && c <= "F") return c - "A" + 4'd10;
     else
-        return 4'hF; // invalid nibble (optional: flag error)
+        return 4'hF; // invalid nibble
 endfunction
 /**********************************************************************/
 
@@ -116,10 +130,22 @@ endfunction
 parameter MAX_CMD_LENGTH = 30;
 parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
+reg [7:0] Read_Data_buffer [4];
+
+initial begin
+          Read_Data_buffer[0] = 170;
+          Read_Data_buffer[1] = 171;
+          Read_Data_buffer[2] = 172;
+          Read_Data_buffer[3] = 173;
+end
 
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
                                       command_buffer[8], command_buffer[9], command_buffer[10]};
+
+wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[12], command_buffer[13], command_buffer[14],
+                                      command_buffer[15]};
+
 
 reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len = 0;
@@ -189,6 +215,11 @@ typedef enum logic [1:0] {
     DIR_OUTPUT = 1          
 } dir_mode_t;
 
+typedef enum logic [1:0] {
+    DISABLE  = 0,
+    ENABLE   = 1          
+} en_mode_t;
+
 substate_pb_i_write4_t substate_pb_i_write4      = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 substate_pb_i_write4_t substate_pb_i_write4_next = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
 
@@ -212,7 +243,7 @@ reg substate_pb_adc4_complete    = 1'b0;   // Flag to indicate substate completi
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 integer i;                          // general purpose 
 integer comma_pos;
-reg [4:0] substate_wait_counter = 0; // 5 bits for up to 31 cycles
+reg [4:0] substate_wait_counter  = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Card_ID                = 0;
 reg [1:0] CommandType            = 0;
@@ -255,7 +286,7 @@ always @(posedge clock) begin
               reset_counter  <= reset_counter + 1'b1;
               LampResetPin   <= 1'b1;        // hold in reset
               data_dir       <= 0;  // input
-              data_out_pins  <= 8'b0;
+              Data_Out_Port  <= 8'b0;
               AddessPortPin  <= 3'b0;
               TestAddressP   <= 1'b01;
               RdP            <= 1'b1;
@@ -322,7 +353,6 @@ always @(posedge clock) begin
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT; // Transition to a wait state
             end else begin
-                debug_16hex_reg = 8'hAA; // example
                 command_state <= STATE_FAIL;
             end
         end
@@ -374,8 +404,8 @@ always @(posedge clock) begin
             SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                WrP <= 1; // CTR_OFF in the assembler
-                RdP <= 1; // CTR_OFF in the assembler
+                WrP <= DISABLE; // CTR_OFF in the assembler
+                RdP <= DISABLE; // CTR_OFF in the assembler
                 wait_multiples <= 4;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_DATA;
@@ -395,21 +425,21 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
-                data_out_pins <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
+                Data_Out_Port <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE;
             end
 
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
-                WrP <= 0; // active low
+                WrP <= ENABLE; // active low
                 wait_multiples <= 2;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE;
             end
 
             SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE: begin
-                WrP <= 1;
+                WrP <= DISABLE;
                 wait_multiples <= 2;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_DATA;
@@ -471,8 +501,8 @@ MOVX    @DPTR,A               ; store data to DPR
             SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                WrP <= 1; // Write disabled
-                RdP <= 0; // Read enable
+                WrP <= DISABLE; // Write disabled
+                RdP <= ENABLE; // Read enable
                 wait_multiples <= 1;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
                 substate_pb_read4_next <= SUBSTATE_PB_READ4_READ_DATA;
@@ -492,7 +522,7 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_READ_DATA: begin
-               command_param_data[Card_ID] <= data_out_pins; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< niblett
+               Read_Data_buffer[Card_ID] <= Data_In_Port;
                wait_multiples <= 1;
                substate_pb_read4_next <= SUBSTATE_PB_READ4_INC_CARD_ID_LOOP;
                substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
@@ -508,7 +538,26 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_DONE: begin
-                send_debug_message(command_param_data[Card_ID], {"R", "e", "a", "d", "4", " ", "0", "x"}, 8);
+
+                bytes_to_ascii(Read_Data_buffer, 4, ascii_out_debug);
+
+                //uart_tx_string[0:17] <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ",", "t", "e", "s", "t", "i", "n", "g"};
+                uart_tx_string[0:10] <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ","};
+
+                uart_tx_string[11] <= ascii_out_debug[0];
+                uart_tx_string[12] <= ascii_out_debug[1];
+                uart_tx_string[13] <= ascii_out_debug[2];
+                uart_tx_string[14] <= ascii_out_debug[3];
+                uart_tx_string[15] <= ascii_out_debug[4];
+                uart_tx_string[16] <= ascii_out_debug[5];
+                uart_tx_string[17] <= ascii_out_debug[6];
+                uart_tx_string[18] <= ascii_out_debug[7];
+                uart_tx_string[19] <= 8'h0D;
+                uart_tx_string[20] <= 8'h0A;
+
+                uart_tx_string_len   = 21; // 21
+                uart_tx_process <= 1'b1;                    // Trigger UART transmission
+
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
             end
@@ -575,8 +624,8 @@ GOTO LOOP4
             SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                WrP <= 1; // CTR_OFF in the assembler
-                RdP <= 1; // CTR_OFF in the assembler
+                WrP <= DISABLE; // CTR_OFF in the assembler
+                RdP <= DISABLE; // CTR_OFF in the assembler
                 wait_multiples <= 1;
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
                 substate_pb_adc4_next <= SUBSTATE_PB_ADC4_DONE; // <<<<<<<<<<<<<<<<<<<<<<
@@ -624,7 +673,7 @@ assign Debug_Pin2 = clock;
 //assign Debug_Pin = TopLevelDebug;
 
 // Assign bidirectional port with tristate buffer behavior
-assign DataPortPins = (data_dir) ? data_out_pins : 8'bz;  // drive data_out_pins if output
-assign data_in_pins = DataPortPins;                      // read pins as input
+assign DataPortPins = (data_dir) ? Data_Out_Port : 8'bz;  // drive Data_Out_Port if output
+assign Data_In_Port = DataPortPins;                      // read pins as input
 
 endmodule
