@@ -58,7 +58,7 @@ task send_debug_message;
     begin
         debug_hex_reg = debug_reg_value; // Set the debug register
         hex_to_ascii_task(debug_hex_reg);     // Convert debug register to ASCII
-        uart_tx_string_len = message_len + 4; // Message length + 2 hex chars + CR + LF
+        uart_tx_string_len <= message_len + 4; // Message length + 2 hex chars + CR + LF
         
         // Copy the message into the UART string
         for (i = 0; i < message_len; i = i + 1) begin
@@ -541,22 +541,12 @@ MOVX    @DPTR,A               ; store data to DPR
 
                 bytes_to_ascii(Read_Data_buffer, 4, ascii_out_debug);
 
-                //uart_tx_string[0:17] <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ",", "t", "e", "s", "t", "i", "n", "g"};
-                uart_tx_string[0:10] <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ","};
+                uart_tx_string[0:10]  <={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ","};
+                uart_tx_string[11:20] <={ascii_out_debug[0], ascii_out_debug[1], ascii_out_debug[2], ascii_out_debug[3], 
+                                         ascii_out_debug[4], ascii_out_debug[5], ascii_out_debug[6], ascii_out_debug[7], 8'h0D, 8'h0A};
 
-                uart_tx_string[11] <= ascii_out_debug[0];
-                uart_tx_string[12] <= ascii_out_debug[1];
-                uart_tx_string[13] <= ascii_out_debug[2];
-                uart_tx_string[14] <= ascii_out_debug[3];
-                uart_tx_string[15] <= ascii_out_debug[4];
-                uart_tx_string[16] <= ascii_out_debug[5];
-                uart_tx_string[17] <= ascii_out_debug[6];
-                uart_tx_string[18] <= ascii_out_debug[7];
-                uart_tx_string[19] <= 8'h0D;
-                uart_tx_string[20] <= 8'h0A;
-
-                uart_tx_string_len   = 21; // 21
-                uart_tx_process <= 1'b1;                    // Trigger UART transmission
+                uart_tx_string_len  <= 21;
+                uart_tx_process     <= 1'b1;                    // Trigger UART transmission
 
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
