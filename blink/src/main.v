@@ -4,7 +4,7 @@ module Top_module(
     input  clock,          // System Clock 27MHz            Pin4
     inout [7:0] DataPortPins,        //                     Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
     output reg [2:0] AddessPortPin,   // Address Port       Pin28,Pin25,Pin26
-    output reg [3:0] B_ID_pins,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
+    output reg [3:0] BOARD_X,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
     output reg TestAddressP,   //                           Pin30
     output reg RdP,            // Read Enable               Pin31
     output reg WrP,            // write Enable              Pin17
@@ -328,7 +328,7 @@ always @(posedge clock) begin
     if (substate_pb_i_write4_active) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
-                Card_ID  <= 0;
+                Board_ID_ptr  <= 0;
                 data_dir <= DIR_OUTPUT;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_PRE_DELAY;
                 end
@@ -341,7 +341,7 @@ always @(posedge clock) begin
 
             //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
             SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin
-                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
@@ -366,7 +366,7 @@ always @(posedge clock) begin
             //MOVX    @R0,A                 ; load data to output latch
             //CLR     DIR_OUT               ; output driver on
             SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
-                Data_Out_Port <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
+                Data_Out_Port <= command_param_data[Board_ID_ptr +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE;
@@ -396,9 +396,9 @@ always @(posedge clock) begin
             end
 
             SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP: begin               
-               if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1  
-                  debug_hex_reg =  Card_ID;       
-                  Card_ID <= Card_ID + 3'd1; 
+               if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1  
+                  debug_hex_reg =  Board_ID_ptr;       
+                  Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
                    substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_DONE;
@@ -436,14 +436,14 @@ MOVX    @DPTR,A               ; store data to DPR
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
-                Card_ID  <= 0; // start from first card
+                Board_ID_ptr  <= 0; // start from first card
                 data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
                 end
 
             //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
             SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin
-                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // Write disabled
                 RdP <= ENABLE; // Read enable
@@ -467,15 +467,15 @@ MOVX    @DPTR,A               ; store data to DPR
 
             //MOVX    A,@R0                 ; read data from bus
             SUBSTATE_PB_READ4_READ_DATA: begin
-               Read_Data_buffer[Card_ID] <= Data_In_Port;
+               Read_Data_buffer[Board_ID_ptr] <= Data_In_Port;
                wait_multiples <= 1;
                substate_pb_read4_next <= SUBSTATE_PB_READ4_INC_CARD_ID_LOOP;
                substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
             end
 
             SUBSTATE_PB_READ4_INC_CARD_ID_LOOP: begin               
-               if(Card_ID < (4 - 1)) begin   // 0->3 is 4 hence the -1
-                  Card_ID <= Card_ID + 3'd1; 
+               if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1
+                  Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
                    substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
@@ -549,7 +549,7 @@ GOTO LOOP4
     if (substate_pb_adc4_active) begin
         case (substate_pb_adc4)
             SUBSTATE_PB_ADC4_IDLE: begin
-                Card_ID <= 0;
+                Board_ID_ptr <= 0;
                 data_dir        <= 1; // set data_port to output mode
                 wait_multiples <= 3;
                 substate_pb_adc4_next = SUBSTATE_PB_ADC4_DONE;
@@ -559,7 +559,7 @@ GOTO LOOP4
             //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
             //#define BOARD_ALL            0x05 // -----101
             SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin
-                B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
+                BOARD_X <= 4'b0001 << Board_ID_ptr; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
