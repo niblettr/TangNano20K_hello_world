@@ -1,3 +1,4 @@
+
 module Top_module( 
     input  clock,                     // System Clock 27MHz   Pin4
 
@@ -16,6 +17,8 @@ module Top_module(
     output Debug_Pin2                 // Debug toggle         Pin80
 );
 
+`include "utils.v"
+
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
     parameter HALF_PERIOD     = 100;       // Adjust for desired speed
@@ -24,6 +27,75 @@ module Top_module(
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
  //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
+/*********************************************************************************************************/
+
+
+
+
+
+/*********************************************************************************************************/
+
+/********** UART Transmission **********/
+reg tx_fifo_write_en;
+reg [7:0] tx_fifo_data_in = 8'b0;
+/********** UART Reception **********/
+reg rx_fifo_read_en;
+reg [7:0] rx_fifo_data_out = 8'b0;
+wire rx_fifo_empty;
+wire rx_sentence_received;
+
+
+    /********** UART debug String **********/
+reg [7:0] uart_tx_string_index = 0; // Index for string transmission
+reg [7:0] uart_tx_string [0:20];
+reg [7:0] uart_tx_string_len;
+
+reg [7:0] debug_hex_reg;
+reg [7:0] hex_as_ascii_word [0:1] = "00";
+
+
+reg [7:0]  Data_Out_Port;
+wire [7:0] Data_In_Port;
+
+
+parameter MAX_CMD_LENGTH = 30;
+parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
+reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
+
+
+integer comma_pos;
+integer i;         // general purpose
+reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
+
+reg lamp_card_reset_activate        = 1'b0;
+reg substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
+reg substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
+reg substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
+reg substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
+reg substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
+reg substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
+
+reg [2:0] uart_tx_state    = 3'b000; // State machine for UART string transmission
+
+reg uart_tx_process        = 1'b0;
+reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
+
+reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
+reg [5:0] command_index = 0;               // Index for the command buffer
+reg [5:0] command_len = 0;
+reg [1:0] CommandType            = 0;
+
+reg data_dir; // 1 = output, 0 = input
+
+wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
+                                      command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
+                                      command_buffer[8], command_buffer[9], command_buffer[10]};
+
+wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[12], command_buffer[13], command_buffer[14],
+                                            command_buffer[15]};
+/*********************************************************************************************************/
+
+
 
     uart #(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -47,81 +119,33 @@ module Top_module(
         .CLOCK_FREQUENCY(CLOCK_FREQUENCY)
     ) state_machines_inst (
         .clock(clock),
+
+        .lamp_card_reset_activate(lamp_card_reset_activate),
+        .lamp_card_reset_complete(lamp_card_reset_complete),
+
         .substate_pb_i_write4_active(substate_pb_i_write4_active),
-        .substate_pb_read4_active(substate_pb_read4_active),
-        .substate_pb_adc4_active(substate_pb_adc4_active) 
+        .substate_pb_i_write4_complete(substate_pb_i_write4_complete),
+ 
+       .substate_pb_read4_active(substate_pb_read4_active),
+       .substate_pb_read4_complete(substate_pb_read4_complete),
+
+        .substate_pb_adc4_active(substate_pb_adc4_active),
+        .substate_pb_adc4_complete(substate_pb_adc4_complete),
+
+        .BOARD_X(BOARD_X),
+        .command_param_data(command_param_data),
+        .Data_Out_Port(Data_Out_Port),
+        .RdP(RdP),
+        .WrP(WrP),
+        .AddessPortPin(AddessPortPin),
+        .TestAddressP(TestAddressP),
+        .LampResetPin(LampResetPin),
+        .Data_In_Port(Data_In_Port),
+        .data_dir(data_dir)
+
+        //.debug_hex_reg(debug_hex_reg)
 
     );
-
-/*********************************************************************************************************/
-    /********** UART Transmission **********/
-    reg tx_fifo_write_en;
-    reg [7:0] tx_fifo_data_in = 8'b0;
-    /********** UART Reception **********/
-    reg rx_fifo_read_en;
-    reg [7:0] rx_fifo_data_out = 8'b0;
-    wire rx_fifo_empty;
-    wire rx_sentence_received;
-/*********************************************************************************************************/
-    /********** UART debug String **********/
-reg [7:0] uart_tx_string_index = 0; // Index for string transmission
-reg [7:0] uart_tx_string [0:20];
-reg [7:0] uart_tx_string_len;
-
-reg [7:0] debug_hex_reg;
-reg [7:0] hex_as_ascii_word [0:1] = "00";
-reg [7:0] ascii_out [7:0];
-
-reg [7:0]  Data_Out_Port;
-wire [7:0] Data_In_Port;
-
-
-parameter MAX_CMD_LENGTH = 30;
-parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
-reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] Read_Data_buffer [4];
-
-integer comma_pos;
-integer i;         // general purpose
-reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
-
-reg substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
-
-reg [2:0] uart_tx_state    = 3'b000; // State machine for UART string transmission
-reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
-reg uart_tx_process        = 1'b0;
-reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
-
-reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
-reg [5:0] command_index = 0;               // Index for the command buffer
-reg [5:0] command_len = 0;
-
-
-
-
-reg [1:0] CommandType            = 0;
-
-initial begin
-          Read_Data_buffer[0] = 170;
-          Read_Data_buffer[1] = 171;
-          Read_Data_buffer[2] = 172;
-          Read_Data_buffer[3] = 173;
-end
-
-wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
-                                      command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
-                                      command_buffer[8], command_buffer[9], command_buffer[10]};
-
-wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[12], command_buffer[13], command_buffer[14],
-                                      command_buffer[15]};
-
-
-
 
 /*********************************************************************************************************/
 task send_debug_message;
@@ -130,8 +154,8 @@ task send_debug_message;
     input integer message_len;   // Length of the message
     integer i;                   // Loop variable
     begin
-        debug_hex_reg = debug_reg_value; // Set the debug register
-        hex_to_ascii_task(debug_hex_reg);     // Convert debug register to ASCII
+      // debug_hex_reg = debug_reg_value; // Set the debug register
+       // hex_to_ascii_task(debug_hex_reg);     // Convert debug register to ASCII
         uart_tx_string_len <= message_len + 4; // Message length + 2 hex chars + CR + LF
         
         // Copy the message into the UART string
@@ -139,42 +163,17 @@ task send_debug_message;
             uart_tx_string[i] <= message[(message_len - 1 - i) * 8 +: 8];
         end
         
-        uart_tx_string[message_len]   <= hex_as_ascii_word[0]; // Add hex MSB
-        uart_tx_string[message_len+1] <= hex_as_ascii_word[1]; // Add hex LSB
+        //uart_tx_string[message_len]   <= hex_as_ascii_word[0]; // Add hex MSB
+        //uart_tx_string[message_len+1] <= hex_as_ascii_word[1]; // Add hex LSB
+        uart_tx_string[message_len]   <= hex_to_ascii_nib(debug_reg_value[7:4]);
+        uart_tx_string[message_len+1] <= hex_to_ascii_nib(debug_reg_value[3:0]);
+        
         uart_tx_string[message_len+2] <= 8'h0D;     // Add carriage return
         uart_tx_string[message_len+3] <= 8'h0A;     // Add line feed
         uart_tx_process <= 1'b1;                    // Trigger UART transmission
     end
 endtask
-/*********************************************************************************************************/
-task hex_to_ascii_task;
-    input [7:0] hex_value;   // Input hex value
-    begin
-        logic [7:0] high, low;
-        // Append the hex value as ASCII characters
-        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
-        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
 
-        hex_as_ascii_word[0] = high;
-        hex_as_ascii_word[1] = low;
-    end
-endtask
-/*********************************************************************************************************/
-task hex_to_ascii;
-    input  [7:0] in_bytes [0:3];   // Input byte array (4 bytes)
-    input  integer num_bytes;      // Number of bytes to convert (should be 4)
-    output [7:0] out_ascii [0:7];  // Output ASCII array (8 chars: 2 per byte)
-    integer i;
-    reg [7:0] high, low;
-    begin
-        for (i = 0; i < num_bytes; i = i + 1) begin
-            high = (in_bytes[i][7:4] < 10) ? (in_bytes[i][7:4] + 8'd48) : (in_bytes[i][7:4] - 4'd10 + 8'd65);
-            low  = (in_bytes[i][3:0] < 10) ? (in_bytes[i][3:0] + 8'd48) : (in_bytes[i][3:0] - 4'd10 + 8'd65);
-            out_ascii[i*2]   = high;
-            out_ascii[i*2+1] = low;
-        end
-    end
-endtask
 /*********************************************************************************************************/
 function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
          if (c >= "0" && c <= "9") return c - "0";
@@ -191,7 +190,8 @@ endfunction
 
 
 typedef enum logic [2:0] {
-   STATE_IDLE              = 3'b0,
+   STATE_INIT               = 3'b0,
+   STATE_IDLE,
    STATE_PARSE_COMMAND,
    STATE_WAIT_FOR_SUBSTATE,
    STATE_PASS,
@@ -202,6 +202,7 @@ typedef enum logic [2:0] {
 always @(posedge clock) begin
 
     rx_fifo_read_en <= 1'b0;
+    OE_Pin          <= 1'b1; // level shifter output enable
 
     case (uart_tx_state)
         3'b000: begin
@@ -231,25 +232,16 @@ always @(posedge clock) begin
     endcase
 /*********************************************************************************************************/
     case (command_state)
-/*
-        STATE_INIT: begin // we want to reset fifo here then move on..
-           if(reset_counter < 100) begin
-              reset_counter  <= reset_counter + 1'b1;
-              //LampResetPin   <= 1'b1;        // hold in reset
-              //data_dir       <= 0;  // input
-              //Data_Out_Port  <= 8'b0;
-              //AddessPortPin  <= 3'b0;
-              //TestAddressP   <= 1'b01;
-              //RdP            <= 1'b1;
-              //WrP            <= 1'b1;
-              //OE_Pin         <= 1'b0;   // Enable pin of LevelShifter
-           end else begin
-              //LampResetPin   <= 1'b0;   // release from reset state
-              //OE_Pin         <= 1'b1;   // Enable pin of LevelShifter
-              command_state <= STATE_IDLE;
-           end
+
+        STATE_INIT: begin
+            lamp_card_reset_activate <= 1;
+            if(lamp_card_reset_complete) begin
+               command_state <= STATE_IDLE;
+               lamp_card_reset_activate <=0;
+
+            end   
         end
-*/
+
         STATE_IDLE: begin // Idle state: Wait for data in RX FIFO            
             if (!rx_fifo_empty && uart_rx_previous_empty) begin
                 uart_rx_previous_empty <= 1'b0;
@@ -312,7 +304,7 @@ always @(posedge clock) begin
         end
 
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
-            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin
+            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin   // niblett renable ASAP!!!!!!!!!!!!!!!!!!!!!!
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
@@ -348,4 +340,11 @@ assign Debug_Pin2 = clock;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
 //assign Debug_Pin = TopLevelDebug;
+
+/********** Continuous Assignment **********/
+// Assign bidirectional port with tristate buffer behavior
+assign DataPortPins = (data_dir) ? Data_Out_Port : 8'bz;  // drive Data_Out_Port if output
+assign Data_In_Port = DataPortPins;                      // read pins as input
+
+
 endmodule
