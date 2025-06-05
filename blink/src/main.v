@@ -4,7 +4,7 @@ module Top_module(
     input  clock,          // System Clock 27MHz            Pin4
     inout [7:0] DataPortPins,        //                     Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
     output reg [2:0] AddessPortPin,   // Address Port       Pin28,Pin25,Pin26
-    output reg [3:0] BOARD_X,// B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
+    output reg [3:0] BOARD_X,  // B3,B2,B1,B0,              Pin29, Pin71, Pin72, Pin29
     output reg TestAddressP,   //                           Pin30
     output reg RdP,            // Read Enable               Pin31
     output reg WrP,            // write Enable              Pin17
@@ -324,7 +324,20 @@ always @(posedge clock) begin
 //VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 //VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 /************************************************************************************************************************/
-    //M_D pb_i_write4
+/*
+[pb_i_write4](port,buf_addr) x4 as there are 4 boards
+MOV     R1,#%buf_addr
+
+MOV     P1,#BOARD_4 OR %port OR CTR_OFF
+MOV     A,@R1                 ; load output data to ACC
+MOVX    @R0,A                 ; load data to output latch
+CLR     DIR_OUT               ; output driver on
+CLR     PB_WR                 ; activate WR-line
+INC     R1                    ; adjust pointer to next item
+SETB    PB_WR                 ; WR-line inactive
+SETB    DIR_OUT               ; output driver off
+[loop 3 more times to do remaining cards (4 in total)]
+*/
     if (substate_pb_i_write4_active) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
@@ -559,8 +572,8 @@ GOTO LOOP4
             //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
             //#define BOARD_ALL            0x05 // -----101
             SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 4'b0001 << Board_ID_ptr; //B_ID_pins = 1, 2, 4 or 8  
-                AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
+                BOARD_X <= BOARD_ALL
+                AddessPortPin <= PORT_MUX;
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
                 wait_multiples <= 1;
