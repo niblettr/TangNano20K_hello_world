@@ -1,3 +1,5 @@
+`include "command_statemachines.v"
+
 module Top_module( 
     input  clock,          // System Clock 27MHz            Pin4
     inout [7:0] DataPortPins,        //                     Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
@@ -14,13 +16,6 @@ module Top_module(
     output Debug_Pin2      // Debug toggle                  Pin80
 );
 
-    //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
-
-    reg [7:0]  Data_Out_Port;
-    wire [7:0] Data_In_Port;
-    reg data_dir; // 1 = output, 0 = input
-
-
     /********** Constants **********/
     parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
     parameter HALF_PERIOD     = 100;       // Adjust for desired speed
@@ -28,28 +23,82 @@ module Top_module(
 
     parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
+ //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
+
+    uart #(
+        .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
+        .BAUD_RATE(BAUD_RATE)
+    ) uart_inst (
+        .clock(clock),
+        .tx_fifo_data_in(tx_fifo_data_in),
+        .uart_tx_pin(Uart_TX_Pin),
+        //.tx_fifo_empty(tx_fifo_empty),
+        .tx_fifo_write_en(tx_fifo_write_en),
+
+        .uart_rx_pin(Uart_RX_Pin),
+        .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
+        .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
+        .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
+        .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
+        //.Debug_uart(Debug_uart)
+    );
+
+/*********************************************************************************************************/
+    /********** UART Transmission **********/
+    reg tx_fifo_write_en;
+    reg [7:0] tx_fifo_data_in = 8'b0;
+    /********** UART Reception **********/
+    reg rx_fifo_read_en;
+    reg [7:0] rx_fifo_data_out = 8'b0;
+    wire rx_fifo_empty;
+    wire rx_sentence_received;
+/*********************************************************************************************************/
     /********** UART debug String **********/
-    reg [7:0] uart_tx_string_index = 0; // Index for string transmission
-    reg [7:0] uart_tx_string [0:63];
-    reg [7:0] uart_tx_string_len;
+reg [7:0] uart_tx_string_index = 0; // Index for string transmission
+reg [7:0] uart_tx_string [0:20];
+reg [7:0] uart_tx_string_len;
 
-    reg [7:0] debug_hex_reg;
-    reg [7:0] hex_as_ascii_word [0:1] = "00";
-    reg [7:0] ascii_out [7:0];
-/**********************************************************************/
-task hex_to_ascii_task;
-    input [7:0] hex_value;   // Input hex value
-    begin
-        logic [7:0] high, low;
-        // Append the hex value as ASCII characters
-        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
-        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
+reg [7:0] debug_hex_reg;
+reg [7:0] hex_as_ascii_word [0:1] = "00";
+reg [7:0] ascii_out [7:0];
 
-        hex_as_ascii_word[0] = high;
-        hex_as_ascii_word[1] = low;
-    end
-endtask
+reg [7:0]  Data_Out_Port;
+wire [7:0] Data_In_Port;
+reg data_dir; // 1 = output, 0 = input
 
+parameter MAX_CMD_LENGTH = 30;
+parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
+reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
+reg [7:0] Read_Data_buffer [4];
+
+initial begin
+          Read_Data_buffer[0] = 170;
+          Read_Data_buffer[1] = 171;
+          Read_Data_buffer[2] = 172;
+          Read_Data_buffer[3] = 173;
+end
+
+wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
+                                      command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
+                                      command_buffer[8], command_buffer[9], command_buffer[10]};
+
+wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[12], command_buffer[13], command_buffer[14],
+                                      command_buffer[15]};
+
+
+typedef enum logic [1:0] {
+    DIR_INPUT  = 0,
+    DIR_OUTPUT = 1          
+} dir_mode_t;
+
+typedef enum logic [1:0] {
+    DISABLE  = 0,
+    ENABLE   = 1          
+} en_mode_t;
+
+
+
+/*********************************************************************************************************/
 task send_debug_message;
     input [7:0] debug_reg_value; // Debug register value
     input [64*8-1:0] message;    // Debug message (up to 64 characters)
@@ -72,7 +121,20 @@ task send_debug_message;
         uart_tx_process <= 1'b1;                    // Trigger UART transmission
     end
 endtask
+/*********************************************************************************************************/
+task hex_to_ascii_task;
+    input [7:0] hex_value;   // Input hex value
+    begin
+        logic [7:0] high, low;
+        // Append the hex value as ASCII characters
+        high = (hex_value[7:4] < 10) ? (hex_value[7:4] + 8'd48) : (hex_value[7:4] - 4'd10 + 8'd65);
+        low  = (hex_value[3:0] < 10) ? (hex_value[3:0] + 8'd48) : (hex_value[3:0] - 4'd10 + 8'd65);
 
+        hex_as_ascii_word[0] = high;
+        hex_as_ascii_word[1] = low;
+    end
+endtask
+/*********************************************************************************************************/
 task hex_to_ascii;
     input  [7:0] in_bytes [0:3];   // Input byte array (4 bytes)
     input  integer num_bytes;      // Number of bytes to convert (should be 4)
@@ -88,7 +150,7 @@ task hex_to_ascii;
         end
     end
 endtask
-
+/*********************************************************************************************************/
 function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
          if (c >= "0" && c <= "9") return c - "0";
     else if (c >= "a" && c <= "f") return c - "a" + 4'd10;
@@ -96,158 +158,30 @@ function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
     else
         return 4'hF; // invalid nibble
 endfunction
-/**********************************************************************/
+/*********************************************************************************************************/
+/*********************************************************************************************************/
+/*********************************************************************************************************/
+/*********************************************************************************************************/
 
-    /********** UART Transmission **********/
-    reg tx_fifo_write_en;
-    reg [7:0] tx_fifo_data_in = 8'b0;
-    /********** UART Reception **********/
-    reg rx_fifo_read_en;
-    reg [7:0] rx_fifo_data_out = 8'b0;
-    wire rx_fifo_empty;
-    wire rx_sentence_received;
-/**************************************************************************************************************/
-
-    uart #(
-        .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
-        .BAUD_RATE(BAUD_RATE)
-    ) uart_inst (
-        .clock(clock),
-        .tx_fifo_data_in(tx_fifo_data_in),
-        .uart_tx_pin(Uart_TX_Pin),
-        //.tx_fifo_empty(tx_fifo_empty),
-        .tx_fifo_write_en(tx_fifo_write_en),
-
-        .uart_rx_pin(Uart_RX_Pin),
-        .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
-        .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
-        .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
-
-        .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
-        //.Debug_uart(Debug_uart)
-    );
-
-parameter MAX_CMD_LENGTH = 30;
-parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
-reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] Read_Data_buffer [4];
-
-initial begin
-          Read_Data_buffer[0] = 170;
-          Read_Data_buffer[1] = 171;
-          Read_Data_buffer[2] = 172;
-          Read_Data_buffer[3] = 173;
-end
-
-wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
-                                      command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
-                                      command_buffer[8], command_buffer[9], command_buffer[10]};
-
-wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[12], command_buffer[13], command_buffer[14],
-                                      command_buffer[15]};
-
-
+reg [2:0] uart_tx_state    = 3'b000; // State machine for UART string transmission
+reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
+reg uart_tx_process        = 1'b0;
+reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
+reg [2:0] command_state = STATE_INIT;      // State machine for command handling
 reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len = 0;
-    // Define FSM states with meaningful names
-    typedef enum logic [2:0] {
-        STATE_INIT             = 3'b000,
-        STATE_IDLE             = 3'b001,
-        STATE_PARSE_COMMAND    = 3'b010,
-        STATE_WAIT             = 3'b011,
-        STATE_PASS             = 3'b100,
-        STATE_FAIL             = 3'b101,
-        STATE_FIND_COMMA       = 3'b110
-    } state_t;
 
-reg [2:0] command_state = STATE_INIT;      // State machine for command handling
+parameter PORT_MUX = 8'h18; // 0x18 // --011--- /  Same Port address
 
-reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
-reg uart_tx_process        = 1'b0;
-
-reg [2:0] uart_tx_state = 3'b000; // State machine for UART string transmission
-reg [7:0] reset_counter = 8'b0; // 1-bit counter for reset delay
-
-// Define states for the new state machine
-typedef enum logic [3:0] {
-    SUBSTATE_PB_I_WRITE4_IDLE              = 4'b0000,
-    SUBSTATE_PB_I_WRITE4_PRE_DELAY,
-    SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID,
-    SUBSTATE_PB_I_WRITE4_WAIT_750N,
-    SUBSTATE_PB_I_WRITE4_ASSERT_DATA,
-    SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE,
-    SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE,
-    SUBSTATE_PB_I_WRITE4_RELEASE_DATA,
-    SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_I_WRITE4_DONE
-} substate_pb_i_write4_t;
-
-typedef enum logic [3:0] {
-    SUBSTATE_PB_READ4_IDLE              = 4'b0000,
-    SUBSTATE_PB_READ4_PRE_DELAY,
-    SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID,
-    SUBSTATE_PB_READ4_WAIT_750N,
-    SUBSTATE_PB_READ4_READ_DATA,
-    SUBSTATE_PB_READ4_ASSERT_WR_ENABLE,
-    SUBSTATE_PB_READ4_RELEASE_WR_ENABLE,
-    SUBSTATE_PB_READ4_RELEASE_DATA,
-    SUBSTATE_PB_READ4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_READ4_TEST_READ,
-    SUBSTATE_PB_READ4_DONE              
-} substate_pb_read4_t;
-
-typedef enum logic [3:0] {
-    SUBSTATE_PB_ADC4_IDLE              = 4'b0000,
-    SUBSTATE_PB_ADC4_PRE_DELAY,
-    SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID,
-    SUBSTATE_PB_ADC4_WAIT_750N,
-    SUBSTATE_PB_ADC4_ASSERT_DATA,
-    SUBSTATE_PB_ADC4_ASSERT_WR_ENABLE,
-    SUBSTATE_PB_ADC4_RELEASE_WR_ENABLE,
-    SUBSTATE_PB_ADC4_RELEASE_DATA,
-    SUBSTATE_PB_ADC4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_ADC4_TEST_READ,
-    SUBSTATE_PB_ADC4_DONE              
-} substate_pb_adc4_t;
-
-typedef enum logic [1:0] {
-    DIR_INPUT  = 0,
-    DIR_OUTPUT = 1          
-} dir_mode_t;
-
-typedef enum logic [1:0] {
-    DISABLE  = 0,
-    ENABLE   = 1          
-} en_mode_t;
-
-substate_pb_i_write4_t substate_pb_i_write4      = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
-substate_pb_i_write4_t substate_pb_i_write4_next = SUBSTATE_PB_I_WRITE4_IDLE; // State variable for the new state machine
-
-substate_pb_read4_t substate_pb_read4      = SUBSTATE_PB_READ4_IDLE; // State variable for the new state machine
-substate_pb_read4_t substate_pb_read4_next = SUBSTATE_PB_READ4_IDLE; // State variable for the new state machine
-
-substate_pb_adc4_t substate_pb_adc4      = SUBSTATE_PB_ADC4_IDLE; // State variable for the new state machine
-substate_pb_adc4_t substate_pb_adc4_next = SUBSTATE_PB_ADC4_IDLE; // State variable for the new state machine
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-reg substate_pb_i_write4_active     = 1'b0;      // Flag to indicate if the substate machine is active
-reg substate_pb_read4_active        = 1'b0;         // Flag to indicate if the substate machine is active
-reg substate_pb_adc4_active      = 1'b0;       // Flag to indicate if the substate machine is active
-
-reg substate_pb_i_write4_complete    = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_read4_complete    = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_adc4_complete    = 1'b0;   // Flag to indicate substate completion
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
-integer i;                          // general purpose 
-integer comma_pos;
-reg [4:0] substate_wait_counter  = 0; // 5 bits for up to 31 cycles
-reg [2:0] wait_multiples         = 0;
-reg [2:0] Card_ID                = 0;
-reg [1:0] CommandType            = 0;
-
+typedef enum logic [2:0] {
+   STATE_INIT              = 3'b000,
+   STATE_IDLE              = 3'b001,
+   STATE_PARSE_COMMAND     = 3'b010,
+   STATE_WAIT_FOR_SUBSTATE = 3'b011,
+   STATE_PASS              = 3'b100,
+   STATE_FAIL              = 3'b101,
+   STATE_FIND_COMMA        = 3'b110
+} state_t;
 
 always @(posedge clock) begin
 
@@ -340,24 +274,24 @@ always @(posedge clock) begin
 
             if (command_word == "pb_i_write,") begin
                 substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_i__read,") begin
                 substate_pb_read4_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_adc4_16,") begin
                 CommandType = 0;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_adc4_08,") begin
                 CommandType = 1;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
-                command_state <= STATE_WAIT; // Transition to a wait state
+                command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
             end else begin
                 command_state <= STATE_FAIL;
             end
         end
 
-        STATE_WAIT: begin // note: only one substatemachine is active at any given time...
+        STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
             if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
@@ -383,10 +317,14 @@ always @(posedge clock) begin
         end
     endcase
 /************************************************************************************************************************/
-///////
-///////
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+//VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 //VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
 /************************************************************************************************************************/
+    //M_D pb_i_write4
     if (substate_pb_i_write4_active) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
@@ -401,7 +339,8 @@ always @(posedge clock) begin
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID;
             end
 
-            SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
+            //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
+            SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
@@ -424,6 +363,8 @@ always @(posedge clock) begin
                 end
             end
 
+            //MOVX    @R0,A                 ; load data to output latch
+            //CLR     DIR_OUT               ; output driver on
             SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
                 Data_Out_Port <= command_param_data[Card_ID +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
@@ -431,20 +372,22 @@ always @(posedge clock) begin
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE;
             end
 
+            //CLR     PB_WR                 ; activate WR-line
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
                 WrP <= ENABLE; // active low
                 wait_multiples <= 2;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
-                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE;
+                substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR;
             end
 
-            SUBSTATE_PB_I_WRITE4_RELEASE_WR_ENABLE: begin
+            SUBSTATE_PB_I_WRITE4_RELEASE_WR: begin
                 WrP <= DISABLE;
                 wait_multiples <= 2;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_DATA;
             end
 
+            //SETB    DIR_OUT               ; output driver off
             SUBSTATE_PB_I_WRITE4_RELEASE_DATA: begin
                 data_dir        <= DIR_INPUT;  // back to input mode
                 wait_multiples <= 1;
@@ -489,7 +432,7 @@ SETB    PB_RD                 ; read inactive
 MOVX    @DPTR,A               ; store data to DPR
 [loop 3 more times to do remaining cards (4 in total)]
 */
-
+    //M_C pb_read4
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
@@ -498,7 +441,8 @@ MOVX    @DPTR,A               ; store data to DPR
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
                 end
 
-            SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
+            //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
+            SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // Write disabled
@@ -521,6 +465,7 @@ MOVX    @DPTR,A               ; store data to DPR
                 end
             end
 
+            //MOVX    A,@R0                 ; read data from bus
             SUBSTATE_PB_READ4_READ_DATA: begin
                Read_Data_buffer[Card_ID] <= Data_In_Port;
                wait_multiples <= 1;
@@ -600,6 +545,7 @@ MOVX    @DPTR,A               ; store data to DPR
 GOTO LOOP4
 */
     // handles the pb_adc4_16 & pb_adc4_8
+    // doing pb_adc4_16 first
     if (substate_pb_adc4_active) begin
         case (substate_pb_adc4)
             SUBSTATE_PB_ADC4_IDLE: begin
@@ -610,7 +556,9 @@ GOTO LOOP4
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
                 end
 
-            SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin // equivalent to P1,#BOARD_4 OR %port OR CTR_OFF, might need a 750ns delay prior to this.........
+            //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
+            //#define BOARD_ALL            0x05 // -----101
+            SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin
                 B_ID_pins <= 4'b0001 << Card_ID; //B_ID_pins = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
