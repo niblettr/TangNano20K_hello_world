@@ -20,18 +20,14 @@ module Top_module(
 `include "utils.v"
 
     /********** Constants **********/
-    parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
-    parameter HALF_PERIOD     = 100;       // Adjust for desired speed
-    parameter integer LED_COUNT_DELAY = ((CLOCK_FREQUENCY / 1000) * HALF_PERIOD) - 1;
+parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
 
-    parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
+parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
+
+parameter MAX_CMD_LENGTH = 30;
+parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
 
  //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
-/*********************************************************************************************************/
-
-
-
-
 
 /*********************************************************************************************************/
 
@@ -53,18 +49,12 @@ reg [7:0] uart_tx_string_len;
 reg [7:0] debug_hex_reg;
 reg [7:0] hex_as_ascii_word [0:1] = "00";
 
-
+reg data_dir; // 1 = output, 0 = input
 reg [7:0]  Data_Out_Port;
 wire [7:0] Data_In_Port;
 
-
-parameter MAX_CMD_LENGTH = 30;
-parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 
-
-integer comma_pos;
-integer i;         // general purpose
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 
 reg lamp_card_reset_activate        = 1'b0;
@@ -85,7 +75,7 @@ reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len = 0;
 reg [1:0] CommandType            = 0;
 
-reg data_dir; // 1 = output, 0 = input
+
 
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
@@ -97,55 +87,46 @@ wire [8*CMD_LENGTH:0] command_data_debug = {command_buffer[11], command_buffer[1
 
 
 
-    uart #(
-        .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
-        .BAUD_RATE(BAUD_RATE)
-    ) uart_inst (
-        .clock(clock),
-        .tx_fifo_data_in(tx_fifo_data_in),
-        .uart_tx_pin(Uart_TX_Pin),
-        //.tx_fifo_empty(tx_fifo_empty),
-        .tx_fifo_write_en(tx_fifo_write_en),
-
-        .uart_rx_pin(Uart_RX_Pin),
-        .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
-        .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
-        .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
-        .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
-        //.Debug_uart(Debug_uart)
-    );
-
-    state_machines #(
-        .CLOCK_FREQUENCY(CLOCK_FREQUENCY)
-    ) state_machines_inst (
-        .clock(clock),
-
-        .lamp_card_reset_activate(lamp_card_reset_activate),
-        .lamp_card_reset_complete(lamp_card_reset_complete),
-
-        .substate_pb_i_write4_active(substate_pb_i_write4_active),
-        .substate_pb_i_write4_complete(substate_pb_i_write4_complete),
- 
-       .substate_pb_read4_active(substate_pb_read4_active),
-       .substate_pb_read4_complete(substate_pb_read4_complete),
-
-        .substate_pb_adc4_active(substate_pb_adc4_active),
-        .substate_pb_adc4_complete(substate_pb_adc4_complete),
-
-        .BOARD_X(BOARD_X),
-        .command_param_data(command_param_data),
-        .Data_Out_Port(Data_Out_Port),
-        .RdP(RdP),
-        .WrP(WrP),
-        .AddessPortPin(AddessPortPin),
-        .TestAddressP(TestAddressP),
-        .LampResetPin(LampResetPin),
-        .Data_In_Port(Data_In_Port),
-        .data_dir(data_dir)
-
-        //.debug_hex_reg(debug_hex_reg)
-
-    );
+uart #(
+    .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
+    .BAUD_RATE(BAUD_RATE)
+) uart_inst (
+    .clock(clock),
+    .tx_fifo_data_in(tx_fifo_data_in),
+    .uart_tx_pin(Uart_TX_Pin),
+    //.tx_fifo_empty(tx_fifo_empty),
+    .tx_fifo_write_en(tx_fifo_write_en),
+    .uart_rx_pin(Uart_RX_Pin),
+    .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
+    .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
+    .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
+    .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
+    //.Debug_uart(Debug_uart)
+);
+state_machines #(
+    .CLOCK_FREQUENCY(CLOCK_FREQUENCY)
+) state_machines_inst (
+    .clock(clock),
+    .lamp_card_reset_activate(lamp_card_reset_activate),
+    .lamp_card_reset_complete(lamp_card_reset_complete),
+    .substate_pb_i_write4_active(substate_pb_i_write4_active),
+    .substate_pb_i_write4_complete(substate_pb_i_write4_complete), 
+    .substate_pb_read4_active(substate_pb_read4_active),
+    .substate_pb_read4_complete(substate_pb_read4_complete),
+    .substate_pb_adc4_active(substate_pb_adc4_active),
+    .substate_pb_adc4_complete(substate_pb_adc4_complete),
+    .BOARD_X(BOARD_X),
+    .command_param_data(command_param_data),
+    .Data_Out_Port(Data_Out_Port),
+    .RdP(RdP),
+    .WrP(WrP),
+    .AddessPortPin(AddessPortPin),
+    .TestAddressP(TestAddressP),
+    .LampResetPin(LampResetPin),
+    .Data_In_Port(Data_In_Port),
+    .data_dir(data_dir)
+    //.debug_hex_reg(debug_hex_reg)
+);
 
 /*********************************************************************************************************/
 task send_debug_message;
@@ -154,8 +135,6 @@ task send_debug_message;
     input integer message_len;   // Length of the message
     integer i;                   // Loop variable
     begin
-      // debug_hex_reg = debug_reg_value; // Set the debug register
-       // hex_to_ascii_task(debug_hex_reg);     // Convert debug register to ASCII
         uart_tx_string_len <= message_len + 4; // Message length + 2 hex chars + CR + LF
         
         // Copy the message into the UART string
@@ -163,8 +142,6 @@ task send_debug_message;
             uart_tx_string[i] <= message[(message_len - 1 - i) * 8 +: 8];
         end
         
-        //uart_tx_string[message_len]   <= hex_as_ascii_word[0]; // Add hex MSB
-        //uart_tx_string[message_len+1] <= hex_as_ascii_word[1]; // Add hex LSB
         uart_tx_string[message_len]   <= hex_to_ascii_nib(debug_reg_value[7:4]);
         uart_tx_string[message_len+1] <= hex_to_ascii_nib(debug_reg_value[3:0]);
         
@@ -174,17 +151,6 @@ task send_debug_message;
     end
 endtask
 
-/*********************************************************************************************************/
-function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
-         if (c >= "0" && c <= "9") return c - "0";
-    else if (c >= "a" && c <= "f") return c - "a" + 4'd10;
-    else if (c >= "A" && c <= "F") return c - "A" + 4'd10;
-    else
-        return 4'hF; // invalid nibble
-endfunction
-/*********************************************************************************************************/
-/*********************************************************************************************************/
-/*********************************************************************************************************/
 /*********************************************************************************************************/
 
 
@@ -200,7 +166,8 @@ typedef enum logic [2:0] {
 } state_t;
 
 always @(posedge clock) begin
-
+integer comma_pos;
+integer i;         // general purpose
     rx_fifo_read_en <= 1'b0;
     OE_Pin          <= 1'b1; // level shifter output enable
 
@@ -277,6 +244,9 @@ always @(posedge clock) begin
 
                high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
                low_nibble  = ascii_hex_to_nibble(command_buffer[comma_pos + 2 + i*2]);
+
+       // uart_tx_string[message_len]   <= hex_to_ascii_nib(debug_reg_value[7:4]);
+       // uart_tx_string[message_len+1] <= hex_to_ascii_nib(debug_reg_value[3:0]);
 
                command_param_data[i] = {high_nibble, low_nibble};
             end
