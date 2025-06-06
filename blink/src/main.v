@@ -55,7 +55,6 @@ reg       uart_tx_process      = 1'b0;
 
 /********** Debug and Conversion **********/
 reg [7:0] debug_hex_reg;
-reg [7:0] hex_as_ascii_word [0:1] = "00";
 
 /********** Data Ports **********/
 reg data_dir; // 1 = output, 0 = input
@@ -64,7 +63,7 @@ wire [7:0] Data_In_Port;
 
 /********** Command Buffers **********/
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
+reg [7:0] command_param_data [0:4]; // 5 bytes
 
 /********** Substate Machine Flags **********/
 reg       lamp_card_reset_activate        = 1'b0;
@@ -105,7 +104,6 @@ uart #(
     .clock(clock),
     .tx_fifo_data_in(tx_fifo_data_in),
     .uart_tx_pin(Uart_TX_Pin),
-    //.tx_fifo_empty(tx_fifo_empty),
     .tx_fifo_write_en(tx_fifo_write_en),
     .uart_rx_pin(Uart_RX_Pin),
     .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
@@ -256,10 +254,8 @@ always @(posedge clock) begin
 
             for (i = 0; i < NUM_CMD_PARAMS; i = i + 1) begin
                logic [3:0] high_nibble, low_nibble;
-
                high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
                low_nibble  = ascii_hex_to_nibble(command_buffer[comma_pos + 2 + i*2]);
-
                command_param_data[i] = {high_nibble, low_nibble};
                
             end
@@ -313,9 +309,8 @@ always @(posedge clock) begin
 
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
-
                       uart_tx_string_len <= 21;
-                      uart_tx_process <= 1'b1;
+
                    end else if (command_word == "pb_adc4_16,") begin
                       uart_tx_string[0:10] <= {"p","b","_","a","d","c","4","_","1","6",","};
 
@@ -333,10 +328,13 @@ always @(posedge clock) begin
 
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
-
                       uart_tx_string_len <= 21;
-                      uart_tx_process <= 1'b1;
+                      
+                   end else if (command_word == "pb_i_write,") begin
+                       uart_tx_string[0:14] <= {"p","b","_","i","_","w","r","i","t","e",",","O","K",8'h0D,8'h0A};
+                       uart_tx_string_len <= 15;
                    end
+                   uart_tx_process <= 1'b1;
                 end
                 PauseCount <= 8'd50;
                 command_state <= STATE_PAUSE;

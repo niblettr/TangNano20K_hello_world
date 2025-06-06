@@ -130,9 +130,9 @@ always @(posedge clock) begin
 
     `include "InitCard.v"       // code for the Card initialisation
 
-    `include "Command_Write4.v"
+    `include "Command_Write4.v" // code/statmachine for pb_i_write
 
-    `include "Command_Read4.v"
+    `include "Command_Read4.v" // code/statmachine for pb_i_read
 
 
 /************************************************************************************************************************/
