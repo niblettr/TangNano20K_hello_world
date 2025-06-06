@@ -33,7 +33,7 @@ module state_machines #(
     output      reg       data_dir,
 
     // Response Handling
-    input       reg [1:0] ResponsePending,
+    input       reg [1:0] ResponsePending,   // fuck with this and see what happens
     input       reg [7:0] ResponseBytes[0:7],
     input       reg [3:0] ResponseByteCount
 
