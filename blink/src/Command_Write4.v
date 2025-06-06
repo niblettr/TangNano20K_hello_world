@@ -89,7 +89,6 @@ SETB    DIR_OUT               ; output driver off
 
             SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP: begin               
                if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1  
-                  debug_hex_reg_test =  Board_ID_ptr;    // niblett   re-enable
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
@@ -98,7 +97,6 @@ SETB    DIR_OUT               ; output driver off
             end
 
             SUBSTATE_PB_I_WRITE4_DONE: begin
-                //send_debug_message(debug_hex_reg_test, {"W", "r", "i", "t", "e", " ", "0", "x"}, 8);
                 substate_pb_i_write4_complete <= 1'b1;   // Indicate substate_pb_i_write4 completion
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_IDLE;
             end

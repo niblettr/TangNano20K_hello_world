@@ -15,9 +15,9 @@ module fifo #(
 );
 
     // Internal signals
-    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];   // Memory array for the FIFO
+    reg [DATA_WIDTH-1:0] fifo_array [0:DEPTH-1];   // Memory array for the FIFO
     reg [$clog2(DEPTH)-1:0] write_ptr = 0;  // Write pointer
-    reg [$clog2(DEPTH):0] read_ptr = 0;     // Read pointer
+    reg [$clog2(DEPTH)-1:0] read_ptr = 0;   // Read pointer
     reg [$clog2(DEPTH):0] count = 0;        // Count of elements in the FIFO
 
     reg read_en_d;
@@ -44,7 +44,7 @@ module fifo #(
            write_ptr <= 0;
            //Debug_fifo <= 1'b0;
         end else if (write_en && !write_en_d && !full) begin
-           mem[write_ptr] <= data_in;       // Write data to memory
+           fifo_array[write_ptr] <= data_in;       // Write data to memory
            write_ptr <= write_ptr + 1'b1;  // Increment write pointer
 
            if(write_ptr >= 30) begin
@@ -82,7 +82,7 @@ module fifo #(
     end
     /*******************************************************************************************/
     // Output assignments
-    assign data_out = mem[read_ptr];
+    assign data_out = fifo_array[read_ptr];
     assign full = (count == DEPTH);
     assign empty = (count == 0);
 

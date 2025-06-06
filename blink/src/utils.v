@@ -17,11 +17,13 @@ function automatic void hex_to_ascii_32(
     end
 endfunction
 
-//working 100%
 function automatic logic [3:0] ascii_hex_to_nibble(input logic [7:0] c);
-         if (c >= "0" && c <= "9") return c - "0";
-    else if (c >= "a" && c <= "f") return c - "a" + 4'd10;
-    else if (c >= "A" && c <= "F") return c - "A" + 4'd10;
+    if (c >= "0" && c <= "9")
+        return (c - "0") & 4'hF;
+    else if (c >= "a" && c <= "f")
+        return (c - "a" + 4'd10) & 4'hF;
+    else if (c >= "A" && c <= "F")
+        return (c - "A" + 4'd10) & 4'hF;
     else
         return 4'hF; // invalid nibble
 endfunction

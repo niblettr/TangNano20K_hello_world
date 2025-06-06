@@ -37,9 +37,6 @@ module state_machines #(
     output       reg       ResponsePending,   // fuck with this and see what happens
     output       reg [7:0] ResponseBytes[0:3],
     output       reg [3:0] ResponseByteCount
-
-    // Debug (commented out for now)
-   // output      reg       debug_hex_reg
 );
 
 `include "utils.v"
@@ -111,7 +108,6 @@ substate_pb_adc4_t substate_pb_adc4_next         = SUBSTATE_PB_ADC4_IDLE;
 reg [4:0] substate_wait_counter  = 0; // 5 bits for up to 31 cycles
 reg [2:0] wait_multiples         = 0;
 reg [2:0] Board_ID_ptr           = 0;
-reg [7:0] debug_hex_reg_test;
 
 reg [7:0] Read_Data_buffer [4];
 reg [7:0] ascii_out [7:0];

@@ -24,7 +24,7 @@ module uart #(
     reg      tx_fifo_reset;
     reg      tx_fifo_read_en;
     reg [7:0]tx_fifo_data_out;
-    wire     tx_fifo_full;
+    //wire     tx_fifo_full;
     wire     tx_fifo_empty;
 
     // RX FIFO
@@ -43,7 +43,7 @@ module uart #(
         .read_en(tx_fifo_read_en),
         .data_in(tx_fifo_data_in),
         .data_out(tx_fifo_data_out),
-        .full(tx_fifo_full),
+        //.full(tx_fifo_full),
         .empty(tx_fifo_empty)
         //.Debug_fifo(Debug_uart_dummy)
     );

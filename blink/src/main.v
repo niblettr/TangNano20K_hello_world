@@ -83,7 +83,7 @@ reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
 reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len   = 0;
 reg [1:0] CommandType   = 0;
-reg [3:0] comma_pos;
+reg [5:0] comma_pos;
 
 /********** Response Handling **********/
 reg       ResponsePending;
@@ -140,8 +140,6 @@ state_machines #(
     .ResponsePending(ResponsePending),
     .ResponseBytes(ResponseBytes),
     .ResponseByteCount(ResponseByteCount)
-
-    //.debug_hex_reg(debug_hex_reg)
 );
 
 /*********************************************************************************************************/
@@ -284,6 +282,7 @@ always @(posedge clock) begin
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; 
             end else begin
+                debug_hex_reg = 8'hFE; // example
                 command_state <= STATE_FAIL;
             end
         end
@@ -346,6 +345,7 @@ always @(posedge clock) begin
         end
 
         STATE_PAUSE: begin
+          debug_hex_reg = 8'h56; // example
           if(PauseCount > 0) begin
              PauseCount <= PauseCount -1'b1;
           end else begin
@@ -353,14 +353,12 @@ always @(posedge clock) begin
           end          
         end
 
-        STATE_PASS: begin
-           //debug_hex_reg = 8'h56; // example
+        STATE_PASS: begin           
            send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
            command_state <= STATE_IDLE;
         end
 
         STATE_FAIL: begin
-           //debug_hex_reg = 8'h54; // example
            send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
            command_state <= STATE_IDLE;
         end
