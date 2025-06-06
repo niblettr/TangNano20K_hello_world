@@ -1,20 +1,28 @@
 
-module Top_module( 
-    input  clock,                     // System Clock 27MHz   Pin4
-    inout      [7:0] DataPortPins,    //                      Pin73,Pin74,Pin75,Pin85,Pin77,Pin15,Pin16,Pin27
-    output reg [2:0] AddessPortPin,   // Address Port         Pin28,Pin25,Pin26
-    output reg [3:0] BOARD_X,         // B3,B2,B1,B0          Pin29, Pin71, Pin72, Pin29
-    output reg       TestAddressP,    // Test address         Pin30
-    output reg       RdP,             // Read Enable          Pin31
-    output reg       WrP,             // write Enable         Pin17
-    output reg       LampResetPin,    // reset                Pin20
-    output reg       OE_Pin,          // LevelShifter Enable  Pin19
-    output           Uart_TX_Pin,     // Transmit pin of UART Pin55
-    input            Uart_RX_Pin,     // Receive pin of UART  Pin49
-    output           Debug_Pin,       // Debug toggle         Pin76
-    output           Debug_Pin2       // Debug toggle         Pin80
-);
+module Top_module(
+    // Clock and Reset
+    input        clock,               // System Clock 27MHz (Pin4)
 
+    // Data Ports
+    inout  [7:0] DataPortPins,        // Data Port Pins (Pin73, Pin74, Pin75, Pin85, Pin77, Pin15, Pin16, Pin27)
+    output reg [2:0] AddessPortPin,   // Address Port (Pin28, Pin25, Pin26)
+    output reg [3:0] BOARD_X,         // Board Signals B3, B2, B1, B0 (Pin29, Pin71, Pin72, Pin29)
+
+    // Control Signals
+    output reg       TestAddressP,    // Test Address (Pin30)
+    output reg       RdP,             // Read Enable (Pin31)
+    output reg       WrP,             // Write Enable (Pin17)
+    output reg       LampResetPin,    // Reset Signal (Pin20)
+    output reg       OE_Pin,          // Level Shifter Enable (Pin19)
+
+    // UART Signals
+    output           Uart_TX_Pin,     // UART Transmit Pin (Pin55)
+    input            Uart_RX_Pin,     // UART Receive Pin (Pin49)
+
+    // Debug Signals
+    output           Debug_Pin,       // Debug Toggle (Pin76)
+    output           Debug_Pin2       // Debug Toggle (Pin80)
+);
 `include "utils.v"
 
     /********** Constants **********/
@@ -29,53 +37,61 @@ parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
 /*********************************************************************************************************/
 
 /********** UART Transmission **********/
-reg tx_fifo_write_en;
-reg [7:0] tx_fifo_data_in = 8'b0;
+reg        tx_fifo_write_en;
+reg [7:0]  tx_fifo_data_in = 8'b0;
+
 /********** UART Reception **********/
-reg rx_fifo_read_en;
-reg [7:0] rx_fifo_data_out = 8'b0;
-wire rx_fifo_empty;
-wire rx_sentence_received;
+reg        rx_fifo_read_en;
+reg [7:0]  rx_fifo_data_out = 8'b0;
+wire       rx_fifo_empty;
+wire       rx_sentence_received;
+reg        uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
 
-reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
+/********** UART Debug String **********/
+reg [7:0]  uart_tx_string_index = 0;      // Index for string transmission
+reg [7:0]  uart_tx_string [0:31];
+reg [7:0]  uart_tx_string_len;
+reg        uart_tx_process = 1'b0;
 
-    /********** UART debug String **********/
-reg [7:0] uart_tx_string_index = 0; // Index for string transmission
-reg [7:0] uart_tx_string [0:20];
-reg [7:0] uart_tx_string_len;
-reg       uart_tx_process      = 1'b0;
+/********** Debug and Conversion **********/
+reg [7:0]  debug_hex_reg;
+reg [7:0]  hex_as_ascii_word [0:1] = "00";
 
-reg [7:0] debug_hex_reg;
-reg [7:0] hex_as_ascii_word [0:1] = "00";
-
-reg data_dir; // 1 = output, 0 = input
-reg  [7:0] Data_Out_Port;
+/********** Data Ports **********/
+reg        data_dir;                      // 1 = output, 0 = input
+reg [7:0]  Data_Out_Port;
 wire [7:0] Data_In_Port;
 
-reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
+/********** Command Buffers **********/
+reg [7:0]  command_buffer [0:31];         // Buffer to store the command
+reg [7:0]  command_param_data [0:4];      // 5 bytes (10 hex chars)
 
-reg [1:0] lamp_card_reset_activate        = 1'b0;
-reg [1:0] substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
-reg [1:0] substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
-reg [1:0] substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
+/********** Substate Machine Flags **********/
+reg [1:0]  lamp_card_reset_activate      = 1'b0;
+reg [1:0]  substate_pb_i_write4_active   = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0]  substate_pb_read4_active      = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0]  substate_pb_adc4_active       = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0]  substate_pb_i_write4_complete = 1'b0;   // Flag to indicate substate completion
+reg [1:0]  substate_pb_read4_complete    = 1'b0;   // Flag to indicate substate completion
+reg [1:0]  substate_pb_adc4_complete     = 1'b0;   // Flag to indicate substate completion
 
-reg [2:0] uart_tx_state    = 3'b000; // State machine for UART string transmission NIBLETT, break sif moved!!!!!!!!!!!!!!
+/********** UART State Machine **********/
+reg [2:0]  uart_tx_state = 3'b000;        // State machine for UART string transmission
 
-reg [2:0] command_state = STATE_IDLE;      // State machine for command handling
-reg [5:0] command_index = 0;               // Index for the command buffer
-reg [5:0] command_len   = 0;
-reg [1:0] CommandType   = 0;
-reg [3:0] comma_pos;
+/********** Command Handling **********/
+reg [2:0]  command_state = STATE_IDLE;   // State machine for command handling
+reg [5:0]  command_index = 0;            // Index for the command buffer
+reg [5:0]  command_len   = 0;
+reg [1:0]  CommandType   = 0;
+reg [3:0]  comma_pos;
 
-reg [1:0] ResponsePending;
-reg [3:0] ResponseByteCount;
-reg [7:0] ResponseBytes[0:7];
-reg [7:0] ResponseBytesDebug[0:7];
+/********** Response Handling **********/
+reg        ResponsePending;
+reg [3:0]  ResponseByteCount;
+reg [7:0]  ResponseBytes[0:7];
+reg [7:0]  ResponseBytesDebug[0:7];
 
+/********** Command Word **********/
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
                                       command_buffer[8], command_buffer[9], command_buffer[10]};
@@ -275,40 +291,15 @@ always @(posedge clock) begin
         end
 
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
-            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin   // niblett renable ASAP!!!!!!!!!!!!!!!!!!!!!!
-
-            substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
-            substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
-            substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
+            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin 
+              
+                substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
+                substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
+                substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
 
                 if(ResponsePending) begin
-
-/*
-                  ResponseBytesDebug[0] = 8'hAA;
-                  ResponseBytesDebug[1] = 8'hBB;
-                  ResponseBytesDebug[2] = 8'hCC;
-                  ResponseBytesDebug[3] = 8'hDD;                  
-
-                   uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytesDebug[0] & 8'hF0) >> 4);
-                   uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytesDebug[0] & 8'h0F);
-
-                   uart_tx_string[2] <= hex_to_ascii_nib((ResponseBytesDebug[1] & 8'hF0) >> 4);
-                   uart_tx_string[3] <= hex_to_ascii_nib (ResponseBytesDebug[1] & 8'h0F);
-
-                   uart_tx_string[4] <= hex_to_ascii_nib((ResponseBytesDebug[2] & 8'hF0) >> 4);
-                   uart_tx_string[5] <= hex_to_ascii_nib (ResponseBytesDebug[2] & 8'h0F);
-
-                   uart_tx_string[6] <= hex_to_ascii_nib((ResponseBytesDebug[3] & 8'hF0) >> 4);
-                   uart_tx_string[7] <= hex_to_ascii_nib (ResponseBytesDebug[3] & 8'h0F);
-
-                   uart_tx_string[8] <= 8'h0D;
-                   uart_tx_string[9] <= 8'h0A;
-
-                   uart_tx_string_len <= 10;
-                   uart_tx_process <= 1'b1;
-*/
-
-                   uart_tx_string[0:5] <= {ResponseBytes[0], ResponseBytes[1], ResponseBytes[2], ResponseBytes[3], 8'h0D, 8'h0A};
+                   //uart_tx_string[0:5] <= {ResponseBytes[0], ResponseBytes[1], ResponseBytes[2], ResponseBytes[3], 8'h0D, 8'h0A};
+                   //uart_tx_string_len  <= 6;
 
                    uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                    uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
@@ -326,7 +317,9 @@ always @(posedge clock) begin
                    uart_tx_string[9] <= 8'h0A;
 
                    uart_tx_string_len <= 10;
-                   uart_tx_process <= 1'b1;
+
+
+                   uart_tx_process     <= 1'b1;
                 end
 
                 command_state <= STATE_PASS; // Transition to STATE_PASS
@@ -342,7 +335,7 @@ always @(posedge clock) begin
 
         STATE_FAIL: begin
            //debug_hex_reg = 8'h54; // example
-           send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
+           //send_debug_message(debug_hex_reg, {"F", "a", "i", "l", "e", "d", " ", "0", "x"}, 9);
            command_state <= STATE_IDLE;
         end
 

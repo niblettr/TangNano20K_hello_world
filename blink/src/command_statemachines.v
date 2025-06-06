@@ -1,31 +1,44 @@
 module state_machines #(
     parameter CLOCK_FREQUENCY = 27000000 // System clock frequency in Hz
 )(
+    // Clock
     input       clock,                      // System clock
-    input       reg [1:0] lamp_card_reset_activate,
-    input       reg [1:0] substate_pb_i_write4_active,
-    input       reg [1:0] substate_pb_read4_active,
-    input       reg [1:0] substate_pb_adc4_active,
 
-    output      reg [1:0] lamp_card_reset_complete,
-    output      reg [1:0] substate_pb_i_write4_complete, 
-    output      reg [1:0] substate_pb_read4_complete,
-    output      reg [1:0] substate_pb_adc4_complete, 
+    // Activation Inputs
+    input reg [1:0] lamp_card_reset_activate,
+    input reg [1:0] substate_pb_i_write4_active,
+    input reg [1:0] substate_pb_read4_active,
+    input reg [1:0] substate_pb_adc4_active,
 
-    output      reg [3:0] BOARD_X,
-    output      reg [2:0] AddessPortPin,
-    output      reg       TestAddressP,
-    output      reg       RdP,
-    output      reg       WrP,
-    output      reg       LampResetPin,
-    input       reg [7:0] command_param_data [0:4],
-    output      reg [7:0] Data_Out_Port,
-    input       [7:0]     Data_In_Port,
-    output      reg       data_dir,
-    input       reg [1:0] ResponsePending,
-    input       reg [7:0] ResponseBytes[0:7],
-    input       reg [3:0] ResponseByteCount
-   // output      reg       debug_hex_reg
+    // Completion Outputs
+    output reg [1:0] lamp_card_reset_complete,
+    output reg [1:0] substate_pb_i_write4_complete, 
+    output reg [1:0] substate_pb_read4_complete,
+    output reg [1:0] substate_pb_adc4_complete, 
+
+    // Board Control Outputs
+    output reg [3:0] BOARD_X,
+    output reg [2:0] AddessPortPin,
+    output reg       TestAddressP,
+    output reg       RdP,
+    output reg       WrP,
+    output reg       LampResetPin,
+
+    // Command Parameters
+    input reg [7:0] command_param_data [0:4],
+
+    // Data Ports
+    output reg [7:0] Data_Out_Port,
+    input      [7:0] Data_In_Port,
+    output reg       data_dir,
+
+    // Response Handling
+    input reg [1:0] ResponsePending,
+    input reg [7:0] ResponseBytes[0:7],
+    input reg [3:0] ResponseByteCount
+
+    // Debug (commented out for now)
+    // output reg debug_hex_reg
 );
 
 `include "utils.v"
@@ -72,7 +85,7 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_READ4_RELEASE_WR_ENABLE,
     SUBSTATE_PB_READ4_RELEASE_DATA,
     SUBSTATE_PB_READ4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_READ4_TEST_READ,
+    SUBSTATE_PB_READ4_REPLY,   
     SUBSTATE_PB_READ4_DONE              
 } substate_pb_read4_t;
 
@@ -145,7 +158,6 @@ MOVX    @DPTR,A               ; store data to DPR
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
-                ResponsePending <= 0;
                 Board_ID_ptr  <= 0; // start from first card
                 data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
@@ -188,12 +200,11 @@ MOVX    @DPTR,A               ; store data to DPR
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
-                   substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
+                   substate_pb_read4 <= SUBSTATE_PB_READ4_REPLY;
                end
             end
 
-            SUBSTATE_PB_READ4_DONE: begin
-                //send response back                
+            SUBSTATE_PB_READ4_REPLY: begin
                 //ResponseBytes[0:3] <= Read_Data_buffer[0:3];
 
                 // hard coded debug responses 
@@ -203,7 +214,12 @@ MOVX    @DPTR,A               ; store data to DPR
                 ResponseBytes[3] <= 8'hDD;
                 ResponseByteCount <= 4;
                 ResponsePending   <= 1;
+                substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
 
+            end
+
+            SUBSTATE_PB_READ4_DONE: begin
+                ResponsePending <= 0;
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;
             end

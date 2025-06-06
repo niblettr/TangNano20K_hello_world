@@ -14,7 +14,7 @@
               WrP            <= 1'b1;
            end else begin
               LampResetPin   <= 1'b0;   // release from reset state
-              lamp_card_reset_complete <=1;
+              lamp_card_reset_complete <= 1'b1;
            end
     end
     
