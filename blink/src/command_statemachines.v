@@ -38,8 +38,8 @@ typedef enum logic [1:0] {
 } dir_mode_t;
 
 typedef enum logic [1:0] {
-    DISABLE  = 0,
-    ENABLE   = 1          
+    DISABLE  = 1,
+    ENABLE   = 0          
 } en_mode_t;
 
 
