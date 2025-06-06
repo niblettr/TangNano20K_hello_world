@@ -67,13 +67,13 @@ reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 
 /********** Substate Machine Flags **********/
-reg [1:0] lamp_card_reset_activate        = 1'b0;
-reg [1:0] substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
-reg [1:0] substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
-reg [1:0] substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
-reg [1:0] substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
+reg       lamp_card_reset_activate        = 1'b0;
+reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
+reg       substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
+reg       substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
+reg       substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
+reg       substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
+reg       substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
 
 /********** UART State Machine **********/
 reg [2:0]  uart_tx_state = 3'b000;        // State machine for UART string transmission
@@ -86,10 +86,9 @@ reg [1:0] CommandType   = 0;
 reg [3:0] comma_pos;
 
 /********** Response Handling **********/
-reg [1:0] ResponsePending;
+reg       ResponsePending;
 reg [3:0] ResponseByteCount;
-reg [7:0] ResponseBytes[0:7];
-reg [7:0] ResponseBytesDebug[0:7];
+reg [7:0] ResponseBytes[0:3];
 
 /********** Command Word **********/
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
@@ -97,7 +96,7 @@ wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], comm
                                       command_buffer[8], command_buffer[9], command_buffer[10]};
 /*********************************************************************************************************/
 
-
+reg [7:0] PauseCount;
 
 uart #(
     .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -128,6 +127,7 @@ state_machines #(
     .substate_pb_adc4_active(substate_pb_adc4_active),
     .substate_pb_adc4_complete(substate_pb_adc4_complete),
     .BOARD_X(BOARD_X),
+    .CommandType(CommandType),
     .command_param_data(command_param_data),
     .Data_Out_Port(Data_Out_Port),
     .RdP(RdP),
@@ -176,17 +176,21 @@ typedef enum logic [2:0] {
    STATE_IDLE,
    STATE_PARSE_COMMAND,
    STATE_WAIT_FOR_SUBSTATE,
+   STATE_PAUSE,
    STATE_PASS,
    STATE_FAIL,
    STATE_FIND_COMMA
 } state_t;
 
+
+
 always @(posedge clock) begin
 
     integer i;         // general purpose, remember, this is not static so will lose its value on every clock cycle.
 
+    tx_fifo_write_en <= 1'b0;
     rx_fifo_read_en <= 1'b0;
-    OE_Pin          <= 1'b1; // level shifter output enable
+    OE_Pin          <= 1'b1; // level shifter output enable (permanently)
 
     case (uart_tx_state)
         3'b000: begin
@@ -200,19 +204,13 @@ always @(posedge clock) begin
                tx_fifo_data_in <= uart_tx_string[uart_tx_string_index]; // Load the current character
                tx_fifo_write_en <= 1'b1;                                // Trigger UART transmission
                uart_tx_string_index <= uart_tx_string_index + 1'b1;     // Move to the next character
-               uart_tx_state <= 3'b011;
+               uart_tx_state <= 3'b000;
              end else begin
                uart_tx_string_index <= 1'b0;     // reset index
                uart_tx_process <= 1'b0;
                uart_tx_state <= 3'b000;
              end
         end
-        
-        3'b011: begin
-           tx_fifo_write_en <= 1'b0;         // Deassert start signal one clock cycle later
-           uart_tx_state <= 3'b001;          // move back to start
-        end
-
     endcase
 /*********************************************************************************************************/
     case (command_state)
@@ -245,7 +243,7 @@ always @(posedge clock) begin
         end
 
         STATE_FIND_COMMA: begin
-           comma_pos = -1;                
+           comma_pos = 0;                
            for (i = 0; i < MAX_CMD_LENGTH; i = i + 1) begin
                if (command_buffer[i] == ",") begin
                    comma_pos = i;
@@ -293,68 +291,71 @@ always @(posedge clock) begin
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
             if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin 
 
-            substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
-            substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
-            substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
+                substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
+                substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
+                substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
 
                 if(ResponsePending) begin
+                   if (command_word == "pb_i__read,") begin
 
-/*
-                  ResponseBytesDebug[0] = 8'hAA;
-                  ResponseBytesDebug[1] = 8'hBB;
-                  ResponseBytesDebug[2] = 8'hCC;
-                  ResponseBytesDebug[3] = 8'hDD;                  
+                      uart_tx_string[0:10] <= {"p","b","_","i","_","_","r","e","a","d",","};
 
-                   uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytesDebug[0] & 8'hF0) >> 4);
-                   uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytesDebug[0] & 8'h0F);
+                      uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
+                      uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
 
-                   uart_tx_string[2] <= hex_to_ascii_nib((ResponseBytesDebug[1] & 8'hF0) >> 4);
-                   uart_tx_string[3] <= hex_to_ascii_nib (ResponseBytesDebug[1] & 8'h0F);
+                      uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
+                      uart_tx_string[14] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
 
-                   uart_tx_string[4] <= hex_to_ascii_nib((ResponseBytesDebug[2] & 8'hF0) >> 4);
-                   uart_tx_string[5] <= hex_to_ascii_nib (ResponseBytesDebug[2] & 8'h0F);
+                      uart_tx_string[15] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
+                      uart_tx_string[16] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
 
-                   uart_tx_string[6] <= hex_to_ascii_nib((ResponseBytesDebug[3] & 8'hF0) >> 4);
-                   uart_tx_string[7] <= hex_to_ascii_nib (ResponseBytesDebug[3] & 8'h0F);
+                      uart_tx_string[17] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
+                      uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
 
-                   uart_tx_string[8] <= 8'h0D;
-                   uart_tx_string[9] <= 8'h0A;
+                      uart_tx_string[19] <= 8'h0D;
+                      uart_tx_string[20] <= 8'h0A;
 
-                   uart_tx_string_len <= 10;
-                   uart_tx_process <= 1'b1;
-*/
+                      uart_tx_string_len <= 21;
+                      uart_tx_process <= 1'b1;
+                   end else if (command_word == "pb_adc4_16,") begin
+                      uart_tx_string[0:10] <= {"p","b","_","a","d","c","4","_","1","6",","};
 
-                   uart_tx_string[0:5] <= {ResponseBytes[0], ResponseBytes[1], ResponseBytes[2], ResponseBytes[3], 8'h0D, 8'h0A};
+                      uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
+                      uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
 
-                   uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
-                   uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
+                      uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
+                      uart_tx_string[14] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
 
-                   uart_tx_string[2] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
-                   uart_tx_string[3] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
+                      uart_tx_string[15] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
+                      uart_tx_string[16] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
 
-                   uart_tx_string[4] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
-                   uart_tx_string[5] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
+                      uart_tx_string[17] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
+                      uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
 
-                   uart_tx_string[6] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
-                   uart_tx_string[7] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
+                      uart_tx_string[19] <= 8'h0D;
+                      uart_tx_string[20] <= 8'h0A;
 
-                   uart_tx_string[8] <= 8'h0D;
-                   uart_tx_string[9] <= 8'h0A;
-
-                   uart_tx_string_len <= 10;
-
-
-                   uart_tx_process <= 1'b1;
+                      uart_tx_string_len <= 21;
+                      uart_tx_process <= 1'b1;
+                   end
                 end
-
-                command_state <= STATE_PASS; // Transition to STATE_PASS
+                PauseCount <= 8'd50;
+                command_state <= STATE_PAUSE;
             end
 
         end
 
+        STATE_PAUSE: begin
+          if(PauseCount > 0) begin
+             PauseCount <= PauseCount -1'b1;
+          end else begin
+             command_state <= STATE_PASS; // Transition to STATE_PASS
+          end          
+        end
+
         STATE_PASS: begin
            //debug_hex_reg = 8'h56; // example
-           //send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
+           send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
            command_state <= STATE_IDLE;
         end
 
