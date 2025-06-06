@@ -195,6 +195,8 @@ MOVX    @DPTR,A               ; store data to DPR
             SUBSTATE_PB_READ4_DONE: begin
                 //send response back                
                 //ResponseBytes[0:3] <= Read_Data_buffer[0:3];
+
+                // hard coded debug responses 
                 ResponseBytes[0] <= 8'hAA;
                 ResponseBytes[1] <= 8'hBB;
                 ResponseBytes[2] <= 8'hCC;

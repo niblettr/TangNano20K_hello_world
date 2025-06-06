@@ -74,6 +74,7 @@ reg [3:0] comma_pos;
 reg [1:0] ResponsePending;
 reg [3:0] ResponseByteCount;
 reg [7:0] ResponseBytes[0:7];
+reg [7:0] ResponseBytesDebug[0:7];
 
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
@@ -247,17 +248,9 @@ always @(posedge clock) begin
                high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
                low_nibble  = ascii_hex_to_nibble(command_buffer[comma_pos + 2 + i*2]);
 
-              // debug_hex_reg = {high_nibble, low_nibble};
-              // send_debug_message(debug_hex_reg, {"P", "a", "s", "s", " ", "0", "x"}, 7);
-
                command_param_data[i] = {high_nibble, low_nibble};
                
             end
-
-            // working debug, terminal must be in hex mode....
-            //uart_tx_string[0:5] <= {command_param_data[0], command_param_data[1], command_param_data[2], command_param_data[3], 8'h0D, 8'h0A};
-            //uart_tx_string_len <= 6;
-            //uart_tx_process <= 1'b1;
 
             if (command_word == "pb_i_write,") begin
                 substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
@@ -290,34 +283,52 @@ always @(posedge clock) begin
 
                 if(ResponsePending) begin
 
-                   if(substate_pb_read4_complete) begin
+/*
+                  ResponseBytesDebug[0] = 8'hAA;
+                  ResponseBytesDebug[1] = 8'hBB;
+                  ResponseBytesDebug[2] = 8'hCC;
+                  ResponseBytesDebug[3] = 8'hDD;                  
 
-                      uart_tx_string[0]  = "p";
-                      uart_tx_string[1]  = "b";
-                      uart_tx_string[2]  = "_";
-                      uart_tx_string[3]  = "i";
-                      uart_tx_string[4]  = "_";
-                      uart_tx_string[5]  = "_";
-                      uart_tx_string[6]  = "r";
-                      uart_tx_string[7]  = "e";
-                      uart_tx_string[8]  = "a";
-                      uart_tx_string[9]  = "d";
-                      uart_tx_string[10] = ",";
-                      uart_tx_string[11] = hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
-                      uart_tx_string[12] = hex_to_ascii_nib(ResponseBytes[0] & 8'h0F);
-                      uart_tx_string[13] = hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
-                      uart_tx_string[14] = hex_to_ascii_nib(ResponseBytes[1] & 8'h0F);
-                      uart_tx_string[15] = hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
-                      uart_tx_string[16] = hex_to_ascii_nib(ResponseBytes[2] & 8'h0F);
-                      uart_tx_string[17] = hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
-                      uart_tx_string[18] = hex_to_ascii_nib(ResponseBytes[3] & 8'h0F);
-                      uart_tx_string[19] = 8'h0D;
-                      uart_tx_string[20] = 8'h0A;
+                   uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytesDebug[0] & 8'hF0) >> 4);
+                   uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytesDebug[0] & 8'h0F);
 
-                      uart_tx_string_len <= 21;
-                      uart_tx_process <= 1'b1;
-                   end
+                   uart_tx_string[2] <= hex_to_ascii_nib((ResponseBytesDebug[1] & 8'hF0) >> 4);
+                   uart_tx_string[3] <= hex_to_ascii_nib (ResponseBytesDebug[1] & 8'h0F);
+
+                   uart_tx_string[4] <= hex_to_ascii_nib((ResponseBytesDebug[2] & 8'hF0) >> 4);
+                   uart_tx_string[5] <= hex_to_ascii_nib (ResponseBytesDebug[2] & 8'h0F);
+
+                   uart_tx_string[6] <= hex_to_ascii_nib((ResponseBytesDebug[3] & 8'hF0) >> 4);
+                   uart_tx_string[7] <= hex_to_ascii_nib (ResponseBytesDebug[3] & 8'h0F);
+
+                   uart_tx_string[8] <= 8'h0D;
+                   uart_tx_string[9] <= 8'h0A;
+
+                   uart_tx_string_len <= 10;
+                   uart_tx_process <= 1'b1;
+*/
+
+                   uart_tx_string[0:5] <= {ResponseBytes[0], ResponseBytes[1], ResponseBytes[2], ResponseBytes[3], 8'h0D, 8'h0A};
+
+                   uart_tx_string[0] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
+                   uart_tx_string[1] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
+
+                   uart_tx_string[2] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
+                   uart_tx_string[3] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
+
+                   uart_tx_string[4] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
+                   uart_tx_string[5] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
+
+                   uart_tx_string[6] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
+                   uart_tx_string[7] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
+
+                   uart_tx_string[8] <= 8'h0D;
+                   uart_tx_string[9] <= 8'h0A;
+
+                   uart_tx_string_len <= 10;
+                   uart_tx_process <= 1'b1;
                 end
+
                 command_state <= STATE_PASS; // Transition to STATE_PASS
             end
 
