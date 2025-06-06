@@ -2,15 +2,15 @@ module state_machines #(
     parameter CLOCK_FREQUENCY = 27000000 // System clock frequency in Hz
 )(
     input       clock,                      // System clock
-    input       reg lamp_card_reset_activate,
-    input       reg substate_pb_i_write4_active,
-    input       reg substate_pb_read4_active,
-    input       reg substate_pb_adc4_active,
+    input       reg [1:0] lamp_card_reset_activate,
+    input       reg [1:0] substate_pb_i_write4_active,
+    input       reg [1:0] substate_pb_read4_active,
+    input       reg [1:0] substate_pb_adc4_active,
 
-    output      reg lamp_card_reset_complete,
-    output      reg substate_pb_i_write4_complete, 
-    output      reg substate_pb_read4_complete,
-    output      reg substate_pb_adc4_complete, 
+    output      reg [1:0] lamp_card_reset_complete,
+    output      reg [1:0] substate_pb_i_write4_complete, 
+    output      reg [1:0] substate_pb_read4_complete,
+    output      reg [1:0] substate_pb_adc4_complete, 
 
     output      reg [3:0] BOARD_X,
     output      reg [2:0] AddessPortPin,
@@ -21,7 +21,10 @@ module state_machines #(
     input       reg [7:0] command_param_data [0:4],
     output      reg [7:0] Data_Out_Port,
     input       [7:0]     Data_In_Port,
-    output      reg       data_dir
+    output      reg       data_dir,
+    input       reg [1:0] ResponsePending,
+    input       reg [7:0] ResponseBytes[0:7],
+    input       reg [3:0] ResponseByteCount
    // output      reg       debug_hex_reg
 );
 
@@ -142,6 +145,7 @@ MOVX    @DPTR,A               ; store data to DPR
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
+                ResponsePending <= 0;
                 Board_ID_ptr  <= 0; // start from first card
                 data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
@@ -189,18 +193,14 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_DONE: begin
-                // send response back
-                //hex_to_ascii_new(Read_Data_buffer, 4, ascii_out);
-
-
-                uart_tx_response_string[0:10] ={"p", "b", "_", "i", "_", "_", "r", "e", "a", "d", ","};
-                hex_to_ascii_32(Read_Data_buffer, uart_tx_response_string[11:20]);
-                //uart_tx_response_string[11:20] <={ascii_out[0], ascii_out[1], ascii_out[2], ascii_out[3], 
-                  //                       ascii_out[4], ascii_out[5], ascii_out[6], ascii_out[7], 8'h0D, 8'h0A};
-
-
-                uart_tx_response_string_len  <= 21;
-                uart_tx_response_process     <= 1'b1;   // Trigger UART transmission
+                //send response back                
+                //ResponseBytes[0:3] <= Read_Data_buffer[0:3];
+                ResponseBytes[0] <= 8'hAA;
+                ResponseBytes[1] <= 8'hBB;
+                ResponseBytes[2] <= 8'hCC;
+                ResponseBytes[3] <= 8'hDD;
+                ResponseByteCount <= 4;
+                ResponsePending   <= 1;
 
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_read4 completion
                 substate_pb_read4 <= SUBSTATE_PB_READ4_IDLE;

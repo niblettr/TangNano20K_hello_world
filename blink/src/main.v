@@ -55,13 +55,13 @@ wire [7:0] Data_In_Port;
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 reg [7:0] command_param_data [0:4]; // 5 bytes (10 hex chars)
 
-reg lamp_card_reset_activate        = 1'b0;
-reg substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
-reg substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
-reg substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
+reg [1:0] lamp_card_reset_activate        = 1'b0;
+reg [1:0] substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0] substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0] substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
+reg [1:0] substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
+reg [1:0] substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
+reg [1:0] substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
 
 reg [2:0] uart_tx_state    = 3'b000; // State machine for UART string transmission NIBLETT, break sif moved!!!!!!!!!!!!!!
 
@@ -70,6 +70,10 @@ reg [5:0] command_index = 0;               // Index for the command buffer
 reg [5:0] command_len   = 0;
 reg [1:0] CommandType   = 0;
 reg [3:0] comma_pos;
+
+reg [1:0] ResponsePending;
+reg [3:0] ResponseByteCount;
+reg [7:0] ResponseBytes[0:7];
 
 wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
@@ -115,7 +119,11 @@ state_machines #(
     .TestAddressP(TestAddressP),
     .LampResetPin(LampResetPin),
     .Data_In_Port(Data_In_Port),
-    .data_dir(data_dir)
+    .data_dir(data_dir),
+    .ResponsePending(ResponsePending),
+    .ResponseBytes(ResponseBytes),
+    .ResponseByteCount(ResponseByteCount)
+
     //.debug_hex_reg(debug_hex_reg)
 );
 
@@ -246,9 +254,10 @@ always @(posedge clock) begin
                
             end
 
-            uart_tx_string[0:5] <= {command_param_data[0], command_param_data[1], command_param_data[2], command_param_data[3], 8'h0D, 8'h0A};
-            uart_tx_string_len <= 6;
-            uart_tx_process <= 1'b1;
+            // working debug, terminal must be in hex mode....
+            //uart_tx_string[0:5] <= {command_param_data[0], command_param_data[1], command_param_data[2], command_param_data[3], 8'h0D, 8'h0A};
+            //uart_tx_string_len <= 6;
+            //uart_tx_process <= 1'b1;
 
             if (command_word == "pb_i_write,") begin
                 substate_pb_i_write4_active <= 1'b1; // Activate the new state machine
@@ -274,11 +283,44 @@ always @(posedge clock) begin
 
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
             if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin   // niblett renable ASAP!!!!!!!!!!!!!!!!!!!!!!
-                substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
-                substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
-                substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
+
+            substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
+            substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
+            substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
+
+                if(ResponsePending) begin
+
+                   if(substate_pb_read4_complete) begin
+
+                      uart_tx_string[0]  = "p";
+                      uart_tx_string[1]  = "b";
+                      uart_tx_string[2]  = "_";
+                      uart_tx_string[3]  = "i";
+                      uart_tx_string[4]  = "_";
+                      uart_tx_string[5]  = "_";
+                      uart_tx_string[6]  = "r";
+                      uart_tx_string[7]  = "e";
+                      uart_tx_string[8]  = "a";
+                      uart_tx_string[9]  = "d";
+                      uart_tx_string[10] = ",";
+                      uart_tx_string[11] = hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
+                      uart_tx_string[12] = hex_to_ascii_nib(ResponseBytes[0] & 8'h0F);
+                      uart_tx_string[13] = hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
+                      uart_tx_string[14] = hex_to_ascii_nib(ResponseBytes[1] & 8'h0F);
+                      uart_tx_string[15] = hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
+                      uart_tx_string[16] = hex_to_ascii_nib(ResponseBytes[2] & 8'h0F);
+                      uart_tx_string[17] = hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
+                      uart_tx_string[18] = hex_to_ascii_nib(ResponseBytes[3] & 8'h0F);
+                      uart_tx_string[19] = 8'h0D;
+                      uart_tx_string[20] = 8'h0A;
+
+                      uart_tx_string_len <= 21;
+                      uart_tx_process <= 1'b1;
+                   end
+                end
                 command_state <= STATE_PASS; // Transition to STATE_PASS
             end
+
         end
 
         STATE_PASS: begin
