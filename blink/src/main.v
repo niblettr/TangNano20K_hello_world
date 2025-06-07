@@ -64,7 +64,7 @@ wire [7:0] Data_In_Port;
 
 /********** Command Buffers **********/
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] command_param_data [0:4]; // 5 bytes
+reg [7:0] command_param_data [0:3]; //  bytes
 
 /********** Substate Machine Flags **********/
 reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
@@ -85,12 +85,11 @@ reg [1:0] CommandType   = 0;
 reg [5:0] comma_pos;
 
 /********** Response Handling **********/
-reg       ResponsePending;
 reg [3:0] ResponseByteCount;
 reg [7:0] ResponseBytes[0:3];
 
 /********** Command Word **********/
-wire [8*CMD_LENGTH:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
+wire [8*CMD_LENGTH-1:0] command_word = {command_buffer[0], command_buffer[1], command_buffer[2], command_buffer[3],
                                       command_buffer[4], command_buffer[5], command_buffer[6], command_buffer[7],
                                       command_buffer[8], command_buffer[9], command_buffer[10]};
 /*********************************************************************************************************/
@@ -136,7 +135,6 @@ state_machines #(
     .LampResetPin(LampResetPin),
     .Data_In_Port(Data_In_Port),
     .data_dir(data_dir),
-    .ResponsePending(ResponsePending),
     .ResponseBytes(ResponseBytes),
     .ResponseByteCount(ResponseByteCount)
 );
@@ -257,7 +255,7 @@ always @(posedge clock) begin
         end
 
         STATE_PARSE_COMMAND: begin
-            localparam int NUM_CMD_PARAMS = 5;
+            localparam int NUM_CMD_PARAMS = 4;
 
             for (i = 0; i < NUM_CMD_PARAMS; i = i + 1) begin
                logic [3:0] high_nibble, low_nibble;
@@ -271,6 +269,7 @@ always @(posedge clock) begin
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_i__read,") begin
                 substate_pb_read4_active <= 1'b1; // Activate the new state machine
+                //bypass_debug <= 1'b1;
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_adc4_16,") begin
                 CommandType = 0;
@@ -296,9 +295,19 @@ always @(posedge clock) begin
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
 
-                if(ResponsePending) begin
                    if (command_word == "pb_i__read,") begin
-                      uart_tx_string[0:10] <= {"p","b","_","i","_","_","r","e","a","d",","};
+
+                      uart_tx_string[0] <= "p";
+                      uart_tx_string[1] <= "b";
+                      uart_tx_string[2] <= "_";
+                      uart_tx_string[3] <= "i";
+                      uart_tx_string[4] <= "_";
+                      uart_tx_string[5] <= "_";
+                      uart_tx_string[6] <= "r";
+                      uart_tx_string[7] <= "e";
+                      uart_tx_string[8] <= "a";
+                      uart_tx_string[9] <= "d";
+                      uart_tx_string[10] <= ",";
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                       uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
                       uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
@@ -310,8 +319,19 @@ always @(posedge clock) begin
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;
+
                    end else if (command_word == "pb_adc4_16,") begin
-                      uart_tx_string[0:10] <= {"p","b","_","a","d","c","4","_","1","6",","};
+                      uart_tx_string[0] <= "p";
+                      uart_tx_string[1] <= "b";
+                      uart_tx_string[2] <= "_";
+                      uart_tx_string[3] <= "a";
+                      uart_tx_string[4] <= "d";
+                      uart_tx_string[5] <= "c";
+                      uart_tx_string[6] <= "4";
+                      uart_tx_string[7] <= "_";
+                      uart_tx_string[8] <= "1";
+                      uart_tx_string[9] <= "6";
+                      uart_tx_string[10] <= ",";
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                       uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
                       uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
@@ -324,12 +344,34 @@ always @(posedge clock) begin
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;                      
                    end else if (command_word == "pb_i_write,") begin
-                       uart_tx_string[0:14] <= {"p","b","_","i","_","w","r","i","t","e",",","O","K",8'h0D,8'h0A};
+                       uart_tx_string[0] <= "p";
+                       uart_tx_string[1] <= "b";
+                       uart_tx_string[2] <= "_";
+                       uart_tx_string[3] <= "i";
+                       uart_tx_string[4] <= "_";
+                       uart_tx_string[5] <= "w";
+                       uart_tx_string[6] <= "r";
+                       uart_tx_string[7] <= "i";
+                       uart_tx_string[8] <= "t";
+                       uart_tx_string[9] <= "e";
+                       uart_tx_string[10] <= ",";
+                       uart_tx_string[11] <= "O";
+                       uart_tx_string[12] <= "K";
+                       uart_tx_string[13] <= 8'h0D;
+                       uart_tx_string[14] <= 8'h0A;
                        uart_tx_string_len <= 15;
+                   end else begin
+                       uart_tx_string[0] <= "o";
+                       uart_tx_string[1] <= "o";
+                       uart_tx_string[2] <= "p";
+                       uart_tx_string[3] <= "s";
+                       uart_tx_string[4] <= 8'h0D;
+                       uart_tx_string[5] <= 8'h0A;
+                       uart_tx_string_len <= 6;
                    end
                    uart_tx_process <= 1'b1;
-                end
-                PauseCount <= 8'd60;
+                
+                PauseCount <= 8'd200;
                 command_state <= STATE_PAUSE;
             end
 

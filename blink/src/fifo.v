@@ -38,7 +38,7 @@ reg write_en_d;
             write_ptr <= 0;
         end else if (write_en && !write_en_d && !full) begin
             fifo_array[write_ptr] <= data_in;
-            write_ptr <= write_ptr + 1'b1;
+            write_ptr <= (write_ptr == DEPTH-1) ? 1'b0 : write_ptr + 1'b1;
         end
     end
 
@@ -47,7 +47,7 @@ reg write_en_d;
         if (reset) begin
             read_ptr <= 0;
         end else if (read_en && !read_en_d && !empty) begin
-            read_ptr <= read_ptr + 1'b1;
+            read_ptr <= (read_ptr == DEPTH-1) ? 1'b0 : read_ptr + 1'b1;
         end
     end
 

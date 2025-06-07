@@ -1,6 +1,5 @@
 // reset portion, only carries out once at startup..
     if(reset) begin
-       reset_counter  <= reset_counter + 1'b1;
        LampResetPin   <= 1'b1;        // hold in reset
        data_dir       <= DIR_INPUT;
        Data_Out_Port  <= 8'b0;

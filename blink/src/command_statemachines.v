@@ -23,7 +23,7 @@ module state_machines #(
     output      reg       LampResetPin,
 
     // Command Parameters
-    input       reg [7:0] command_param_data [0:4],
+    input       reg [7:0] command_param_data [0:3],
     input       reg [1:0] CommandType,
 
     // Data Ports
@@ -32,7 +32,6 @@ module state_machines #(
     output      reg       data_dir,
 
     // Response Handling
-    output       reg       ResponsePending,   // fuck with this and see what happens
     output       reg [7:0] ResponseBytes[0:3],
     output       reg [3:0] ResponseByteCount
 );
@@ -116,22 +115,14 @@ reg       uart_tx_response_process = 1'b0;
 
 reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
 
-initial begin
-   Read_Data_buffer[0] = 170;
-   Read_Data_buffer[1] = 171;
-   Read_Data_buffer[2] = 172;
-   Read_Data_buffer[3] = 173;
-end
-
-
 always @(posedge clock) begin
 
 
     `include "InitCard.v"       // code for the Card initialisation
 
-    `include "Command_Write4.v" // code/statmachine for pb_i_write
-
     `include "Command_Read4.v" // code/statmachine for pb_i_read
+
+    `include "Command_Write4.v" // code/statmachine for pb_i_write
 
 
 /************************************************************************************************************************/
@@ -215,7 +206,6 @@ GOTO LOOP4
                 //if(CommandType == 0) begin
                    ResponseBytes[0:3] <= Read_Data_buffer[0:3];
                    ResponseByteCount  <= 4;
-                   ResponsePending    <= 1;
                 //end
 
                 substate_pb_read4_complete <= 1'b1;   // Indicate substate_pb_adc4 completion

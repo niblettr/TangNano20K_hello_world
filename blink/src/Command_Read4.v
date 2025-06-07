@@ -17,7 +17,6 @@ MOVX    @DPTR,A               ; store data to DPR
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
-                ResponsePending <= 0;
                 Board_ID_ptr  <= 0; // start from first card
                 data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
@@ -27,8 +26,8 @@ MOVX    @DPTR,A               ; store data to DPR
             SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin
                 BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                WrP <= DISABLE; // Write disabled
-                RdP <= ENABLE; // Read enable
+                WrP <= DISABLE;
+                RdP <= ENABLE;
                 wait_multiples <= 1;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
                 substate_pb_read4_next <= SUBSTATE_PB_READ4_READ_DATA;
@@ -67,8 +66,7 @@ MOVX    @DPTR,A               ; store data to DPR
             SUBSTATE_PB_READ4_RESPOND: begin
                 ResponseBytes[0:3] <= Read_Data_buffer[0:3];
                 ResponseByteCount  <= 4;
-                ResponsePending    <= 1;
-               substate_pb_read4   <= SUBSTATE_PB_READ4_DONE;
+                substate_pb_read4   <= SUBSTATE_PB_READ4_DONE;
             end
 
             SUBSTATE_PB_READ4_DONE: begin

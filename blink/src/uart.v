@@ -56,46 +56,46 @@ fifo #(
 );
 
 
-    // Add a timer for idle period detection i.e. a frame or packet
+// Idle period tracking
     reg [15:0] idle_period_counter  = 0;
     reg idle_counter_started = 1'b0;
-    localparam BYTE_PERIOD = BAUD_DIVISOR * 10; // Duration of 1 byte (10 bits at the current baud rate)
+localparam BYTE_PERIOD = BAUD_DIVISOR * 10;  // 1 byte = 10 bits
 
-    // Internal registers for transmission
-    reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
-    reg [7:0] bit_index = 0;                 // Index for bits being transmitted
-    reg [9:0] tx_shift_reg = 10'b1111111111; // Shift register for start, data, and stop bits
-    reg transmitting = 1'b0;                 // Indicates if UART is currently transmitting
+// UART TX internals
+reg [15:0] tx_baud_counter = 0;              // Baud rate divider
+reg [3:0]  bit_index = 0;                    // Bit index (0–9)
+reg [9:0]  tx_shift_reg = 10'b1111111111;    // Start, data, stop bits
+reg        transmitting = 1'b0;              // TX in progress
 
     /*********************************************************************************************/
-    // UART Transmit Logic
     always @(posedge clock) begin
-        tx_fifo_read_en <= 1'b0;                          // Deassert read enable
+    // Default assignments
+    tx_fifo_read_en <= 1'b0;
 
         if (!transmitting) begin
-           uart_tx_pin <= 1'b1;                            // idle High
-        end
+        uart_tx_pin <= 1'b1;  // Idle high
 
-        if (!transmitting && !tx_fifo_empty) begin
-           transmitting <= 1'b1;                           // Start transmission
-           tx_shift_reg <= {1'b1, tx_fifo_data_out, 1'b0}; // Load start bit, data, and stop bit
-           tx_fifo_read_en <= 1'b1;                        // Read from TX FIFO
-           tx_baud_counter <= 0;                           // Reset baud counter
-           bit_index <= 0;                                 // Reset bit index
+        if (!tx_fifo_empty) begin
+            // Start new transmission
+            transmitting       <= 1'b1;
+            tx_shift_reg       <= {1'b1, tx_fifo_data_out, 1'b0}; // {Stop, Data[7:0], Start}
+            tx_fifo_read_en    <= 1'b1;
+            tx_baud_counter    <= 0;
+            bit_index          <= 0;
         end
-
-        if (transmitting) begin
+    end else begin
+        // Ongoing transmission
            if (tx_baud_counter < BAUD_DIVISOR - 1) begin
-              tx_baud_counter <= tx_baud_counter + 1'b1;   // Increment baud counter
+            tx_baud_counter <= tx_baud_counter + 1'b1;
            end else begin
-              tx_baud_counter <= 0;                        // Reset baud counter
-              uart_tx_pin <= tx_shift_reg[0];              // Transmit the current bit
-              tx_shift_reg <= {1'b1, tx_shift_reg[9:1]};   // Shift to the next bit
-              bit_index <= bit_index + 1'b1;               // Increment bit index
+            tx_baud_counter <= 0;
+            uart_tx_pin     <= tx_shift_reg[0];         // Output current bit
+            tx_shift_reg    <= {1'b1, tx_shift_reg[9:1]}; // Logical shift right
+            bit_index       <= bit_index + 1'b1;
 
-              if (bit_index == 9) begin                    // Stop after transmitting all bits
-                 transmitting <= 1'b0;                     // End transmission
-                 bit_index <= 0;                           // Reset bit index
+            if (bit_index == 9) begin
+                transmitting <= 1'b0; // All bits sent
+                bit_index    <= 0;
               end
            end
         end
