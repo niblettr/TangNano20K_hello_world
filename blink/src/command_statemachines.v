@@ -102,6 +102,7 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_ADC4_TEST_READ,
     SUBSTATE_PB_ADC4_DONE              
 } substate_pb_adc4_t;
+
 substate_pb_adc4_t substate_pb_adc4              = SUBSTATE_PB_ADC4_IDLE;
 substate_pb_adc4_t substate_pb_adc4_next         = SUBSTATE_PB_ADC4_IDLE;
 
@@ -110,11 +111,11 @@ reg [2:0] wait_multiples         = 0;
 reg [2:0] Board_ID_ptr           = 0;
 
 reg [7:0] Read_Data_buffer [4];
-reg [7:0] ascii_out [7:0];
 
 reg [7:0] uart_tx_response_string [0:20];
 reg [7:0] uart_tx_response_string_len;
-reg uart_tx_response_process        = 1'b0;
+reg       uart_tx_response_process = 1'b0;
+
 reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
 
 initial begin

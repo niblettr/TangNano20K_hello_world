@@ -189,6 +189,7 @@ always @(posedge clock) begin
     tx_fifo_write_en <= 1'b0;
     rx_fifo_read_en  <= 1'b0;
 
+    // activate reset signal on startup
     if (init) begin
         reset <= 1'b1; // apply reset
         init  <= 1'b0; // init done
@@ -224,10 +225,11 @@ always @(posedge clock) begin
     case (command_state)
 
         STATE_INIT: begin
-            lamp_card_reset_activate <= 1;
+            lamp_card_reset_activate <= 1'b1;
             if(lamp_card_reset_complete) begin
-               command_state <= STATE_IDLE;
-               lamp_card_reset_activate <=0;
+               lamp_card_reset_activate <= 1'b0;
+               command_state <= STATE_IDLE;               
+               OE_Pin        <= 1'b1;
 
             end   
         end
@@ -268,8 +270,7 @@ always @(posedge clock) begin
                logic [3:0] high_nibble, low_nibble;
                high_nibble = ascii_hex_to_nibble(command_buffer[comma_pos + 1 + i*2]);
                low_nibble  = ascii_hex_to_nibble(command_buffer[comma_pos + 2 + i*2]);
-               command_param_data[i] = {high_nibble, low_nibble};
-               
+               command_param_data[i] = {high_nibble, low_nibble};               
             end
 
             if (command_word == "pb_i_write,") begin
@@ -348,7 +349,7 @@ always @(posedge clock) begin
                    end
                    uart_tx_process <= 1'b1;
                 end
-                PauseCount <= 8'd50;
+                PauseCount <= 8'd60;
                 command_state <= STATE_PAUSE;
             end
 

@@ -115,9 +115,9 @@ fifo #(
     // UART Receive Logic
     // Synchronize uart_rx_pin to the clock domain
     always @(posedge clock) begin
+
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
-
         UartPacketReceived <= 1'b0;
 
     // Start bit detection
@@ -154,7 +154,6 @@ fifo #(
 
     end else begin
         rx_fifo_write_en <= 1'b0; // Deassert write enable when not receiving
-
         // Increment quiet period counter when not receiving
         if (quiet_period_counter_started) begin
             if (quiet_period_counter < BYTE_PERIOD) begin

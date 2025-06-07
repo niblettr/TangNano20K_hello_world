@@ -12,14 +12,14 @@ module fifo #(
     output                  empty       // FIFO empty flag
 );
 
-    // Internal memory and control signals
-    reg [DATA_WIDTH-1:0] fifo_array [0:DEPTH-1];
-    reg [$clog2(DEPTH)-1:0] write_ptr;
-    reg [$clog2(DEPTH)-1:0] read_ptr;
-    reg [$clog2(DEPTH):0]   count;
+// Internal memory and control signals
+reg [DATA_WIDTH-1:0] fifo_array [0:DEPTH-1];
+reg [$clog2(DEPTH)-1:0] write_ptr;
+reg [$clog2(DEPTH)-1:0] read_ptr;
+reg [$clog2(DEPTH):0]   count;
 
-    reg read_en_d;
-    reg write_en_d;
+reg read_en_d;
+reg write_en_d;
 
     // Previous state capture for edge detection
     always @(posedge clock or posedge reset) begin
