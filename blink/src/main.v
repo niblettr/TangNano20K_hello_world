@@ -35,7 +35,8 @@ parameter CMD_LENGTH = 11; // "pb_i_write, or pb_i_read,"
  //reg TopLevelDebug2  = 0; // commented out for time being to remove warning
 
 /*********************************************************************************************************/
-
+reg init  = 1'b1;
+reg reset = 1'b0;
 /********** UART Transmission **********/
 reg tx_fifo_write_en;
 reg [7:0] tx_fifo_data_in = 8'b0;
@@ -44,7 +45,7 @@ reg [7:0] tx_fifo_data_in = 8'b0;
 reg rx_fifo_read_en;
 reg [7:0] rx_fifo_data_out = 8'b0;
 wire rx_fifo_empty;
-wire rx_sentence_received;
+wire UartPacketReceived;
 reg uart_rx_previous_empty = 1'b0; // Flag to track if RX processing is in progress
 
 /********** UART Debug String **********/
@@ -102,14 +103,16 @@ uart #(
     .BAUD_RATE(BAUD_RATE)
 ) uart_inst (
     .clock(clock),
+    .reset(reset),
     .tx_fifo_data_in(tx_fifo_data_in),
     .uart_tx_pin(Uart_TX_Pin),
     .tx_fifo_write_en(tx_fifo_write_en),
+    .tx_fifo_full(tx_fifo_full),
     .uart_rx_pin(Uart_RX_Pin),
-    .rx_fifo_empty(rx_fifo_empty),       // Connect rx_fifo_empty
-    .rx_fifo_data_out(rx_fifo_data_out), // Connect RX FIFO data output
-    .rx_fifo_read_en(rx_fifo_read_en),   // Connect RX FIFO read enable
-    .rx_sentence_received(rx_sentence_received)       // Connect rx_sentence_received
+    .rx_fifo_empty(rx_fifo_empty),
+    .rx_fifo_data_out(rx_fifo_data_out),
+    .rx_fifo_read_en(rx_fifo_read_en),
+    .UartPacketReceived(UartPacketReceived) 
     //.Debug_uart(Debug_uart)
 );
 state_machines #(
@@ -179,14 +182,19 @@ typedef enum logic [2:0] {
 } state_t;
 
 
-
 always @(posedge clock) begin
 
     integer i;         // general purpose, remember, this is not static so will lose its value on every clock cycle.
 
     tx_fifo_write_en <= 1'b0;
-    rx_fifo_read_en <= 1'b0;
-    OE_Pin          <= 1'b1; // level shifter output enable (permanently)
+    rx_fifo_read_en  <= 1'b0;
+
+    if (init) begin
+        reset <= 1'b1; // apply reset
+        init  <= 1'b0; // init done
+    end else begin        
+        reset <= 1'b0; // release reset
+    end
 
     case (uart_tx_state)
         3'b000: begin
@@ -196,15 +204,19 @@ always @(posedge clock) begin
         end // case
 
         3'b001: begin
-            if (uart_tx_string_index < uart_tx_string_len) begin
-               tx_fifo_data_in <= uart_tx_string[uart_tx_string_index]; // Load the current character
-               tx_fifo_write_en <= 1'b1;                                // Trigger UART transmission
-               uart_tx_string_index <= uart_tx_string_index + 1'b1;     // Move to the next character
-               uart_tx_state <= 3'b000;
+            if(!tx_fifo_full) begin
+               if (uart_tx_string_index < uart_tx_string_len) begin            
+                  tx_fifo_data_in <= uart_tx_string[uart_tx_string_index]; // Load the current character
+                  tx_fifo_write_en <= 1'b1;                                // Trigger UART transmission
+                  uart_tx_string_index <= uart_tx_string_index + 1'b1;     // Move to the next character
+                  uart_tx_state <= 3'b000;
+                end else begin
+                  uart_tx_string_index <= 1'b0;     // reset index
+                  uart_tx_process <= 1'b0;
+                  uart_tx_state <= 3'b000;
+                end
              end else begin
-               uart_tx_string_index <= 1'b0;     // reset index
-               uart_tx_process <= 1'b0;
-               uart_tx_state <= 3'b000;
+                // error state!!!!
              end
         end
     endcase
@@ -231,7 +243,7 @@ always @(posedge clock) begin
               uart_rx_previous_empty <= 1'b1;
             end
 
-            if(rx_sentence_received) begin
+            if(UartPacketReceived) begin
                 command_len <= command_index;
                 command_index <= 3'b0;        // reset to zero
                 command_state <= STATE_FIND_COMMA; // Move to command processing state
@@ -365,14 +377,10 @@ always @(posedge clock) begin
             command_state <= STATE_IDLE; // Reset to idle state
         end
     endcase
-
-
-
-/************************************************************************************************************************/
 end
 
 /********** Continuous Assignment **********/
-assign Debug_Pin = rx_sentence_received;
+assign Debug_Pin = UartPacketReceived;
 assign Debug_Pin2 = clock;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;

@@ -3,95 +3,64 @@ module uart #(
     parameter BAUD_RATE = 115200          // UART baud rate
 )(
     input       clock,                      // System clock
+    input       reset,
     output reg  uart_tx_pin,
     input       uart_rx_pin,
-    //output reg  Debug_uart,               // Routed to pin in top module, for debug purposes...
-    //output reg  Debug_uart2,               // Routed to pin in top module, for debug purposes...
 
     input [7:0] tx_fifo_data_in,
     input       tx_fifo_write_en,
+    output      tx_fifo_full,
 
     output reg  rx_fifo_empty,    
     output reg  [7:0] rx_fifo_data_out,
-    output reg  rx_sentence_received,
+    output reg  UartPacketReceived,
     input       rx_fifo_read_en
 );
 
-    // Calculate the baud rate divisor
-    localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
+// Calculate the baud rate divisor
+localparam BAUD_DIVISOR = CLOCK_FREQUENCY / BAUD_RATE;
 
-    // TX FIFO
-    reg      tx_fifo_reset;
-    reg      tx_fifo_read_en;
-    reg [7:0]tx_fifo_data_out;
-    //wire     tx_fifo_full;
-    wire     tx_fifo_empty;
+// TX FIFO
+reg      tx_fifo_read_en;
+reg [7:0]tx_fifo_data_out;
 
-    // RX FIFO
-    reg      rx_fifo_reset;
-    reg      rx_fifo_write_en;
-    reg [7:0]rx_fifo_data_in;
-    wire     rx_fifo_full;
-
-    fifo #(
-        .DATA_WIDTH(8),
-        .DEPTH(32)
-    ) fifo_tx_inst (
-        .clock(clock),
-        .reset(tx_fifo_reset),
-        .write_en(tx_fifo_write_en),
-        .read_en(tx_fifo_read_en),
-        .data_in(tx_fifo_data_in),
-        .data_out(tx_fifo_data_out),
-        //.full(tx_fifo_full),
-        .empty(tx_fifo_empty)
-        //.Debug_fifo(Debug_uart_dummy)
+fifo #(.DATA_WIDTH(8),
+    .DEPTH(32)
+) fifo_tx_inst (
+    .clock(clock),
+    .reset(reset),
+    .write_en(tx_fifo_write_en),
+    .read_en(tx_fifo_read_en),
+    .data_in(tx_fifo_data_in),
+    .data_out(tx_fifo_data_out),
+    .full(tx_fifo_full),
+    .empty(tx_fifo_empty)
     );
 
-    fifo #(
-        .DATA_WIDTH(8),
-        .DEPTH(32)
-    ) fifo_rx_inst (
-        .clock(clock),
-        .reset(rx_fifo_reset),
-        .write_en(rx_fifo_write_en),
-        .read_en(rx_fifo_read_en),
-        .data_in(rx_fifo_data_in),
-        .data_out(rx_fifo_data_out),
-        .full(rx_fifo_full),
-        .empty(rx_fifo_empty)
-        //.Debug_fifo(Debug_uart)
-    );
+// RX FIFO
+reg      rx_fifo_write_en;
+reg [7:0]rx_fifo_data_in;
 
+fifo #(
+    .DATA_WIDTH(8),
+    .DEPTH(32)
+) fifo_rx_inst (
+    .clock(clock),
+    .reset(reset),
+    .write_en(rx_fifo_write_en),
+    .read_en(rx_fifo_read_en),
+    .data_in(rx_fifo_data_in),
+    .data_out(rx_fifo_data_out),
+    .full(rx_fifo_full),
+    .empty(rx_fifo_empty)
+);
 
-    // Initialize uart_tx_pin to idle state (high) and FIFO ready flag
-    reg [1:0] reset_counter = 2'b0; // 2-bit counter for reset delay
-    reg _reset = 1'b1;              // Reset signal
-    reg reset_done = 1'b0;          // Flag to indicate reset has been deasserted
 
     // Add a timer for quiet period detection
     reg [15:0] quiet_period_counter = 0; // Counter for quiet period
     reg quiet_period_counter_started = 1'b0;
     localparam BYTE_PERIOD = BAUD_DIVISOR * 10; // Duration of 1 byte (10 bits at the current baud rate)
 
-
-    // initialisation
-    always @(posedge clock) begin
-        if (!reset_done) begin
-            if (reset_counter < 4'd1) begin
-                reset_counter <= reset_counter + 1'b1;
-                _reset <= 1'b1; // Keep reset asserted
-                rx_fifo_reset <= 1'b1;
-                tx_fifo_reset <= 1'b1;
-                //Debug_uart <= 1'b0;
-            end else begin
-               _reset <= 1'b0;        // Deassert reset after 10 clock cycles
-                reset_done <= 1'b1;    // Latch that reset is done
-                rx_fifo_reset <= 1'b0;
-                tx_fifo_reset <= 1'b0;
-            end
-        end
-    end
 
     // Internal registers for transmission
     reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
@@ -103,7 +72,6 @@ module uart #(
     // UART Transmit Logic
     always @(posedge clock) begin
         tx_fifo_read_en <= 1'b0;                           // Deassert read enable
-
         if (!transmitting) begin
            uart_tx_pin = 1'b1;                             // idle High
         end
@@ -150,7 +118,7 @@ module uart #(
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
 
-        rx_sentence_received <= 1'b0;
+        UartPacketReceived <= 1'b0;
 
     // Start bit detection
     if (!receiving && !uart_rx_pin_sync2 ) begin
@@ -193,7 +161,7 @@ module uart #(
                 quiet_period_counter <= quiet_period_counter + 1'b1;
             end else begin
                 // Quiet period detected
-                rx_sentence_received <= 1'b1; // Assert rx_sentence_received
+                UartPacketReceived <= 1'b1; // Assert UartPacketReceived
                 quiet_period_counter <= 0;   // Reset the counter
                 quiet_period_counter_started <= 1'b0;
             end
