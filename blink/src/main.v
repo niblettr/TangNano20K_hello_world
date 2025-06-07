@@ -94,7 +94,7 @@ wire [8*CMD_LENGTH-1:0] command_word = {command_buffer[0], command_buffer[1], co
                                       command_buffer[8], command_buffer[9], command_buffer[10]};
 /*********************************************************************************************************/
 
-reg [7:0] PauseCount;
+reg [7:0] ClockCyclesToWaste_8;
 
 uart #(
     .CLOCK_FREQUENCY(CLOCK_FREQUENCY),
@@ -371,7 +371,7 @@ always @(posedge clock) begin
                    end
                    uart_tx_process <= 1'b1;
                 
-                PauseCount <= 8'd200;
+                ClockCyclesToWaste_8 <= 8'd30;
                 command_state <= STATE_PAUSE;
             end
 
@@ -379,8 +379,8 @@ always @(posedge clock) begin
 
         STATE_PAUSE: begin
           debug_hex_reg = 8'h56; // example
-          if(PauseCount > 0) begin
-             PauseCount <= PauseCount -1'b1;
+          if(ClockCyclesToWaste_8 > 0) begin
+             ClockCyclesToWaste_8 <= ClockCyclesToWaste_8 -1'b1;
           end else begin
              command_state <= STATE_PASS; // Transition to STATE_PASS
           end          
