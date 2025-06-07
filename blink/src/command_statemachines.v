@@ -1,17 +1,15 @@
 module state_machines #(
     parameter CLOCK_FREQUENCY = 27000000 // System clock frequency in Hz
 )(
-    // Clock
-    input       clock,                      // System clock
+    input       clock,    // System clock
+    input       reset,
 
     // Activation Inputs
-    input       reg       lamp_card_reset_activate,
     input       reg       substate_pb_i_write4_active,
     input       reg       substate_pb_read4_active,
     input       reg       substate_pb_adc4_active,
 
     // Completion Outputs
-    output      reg       lamp_card_reset_complete,
     output      reg       substate_pb_i_write4_complete, 
     output      reg       substate_pb_read4_complete,
     output      reg       substate_pb_adc4_complete, 

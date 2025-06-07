@@ -67,7 +67,6 @@ reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
 reg [7:0] command_param_data [0:4]; // 5 bytes
 
 /********** Substate Machine Flags **********/
-reg       lamp_card_reset_activate        = 1'b0;
 reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
@@ -119,8 +118,7 @@ state_machines #(
     .CLOCK_FREQUENCY(CLOCK_FREQUENCY)
 ) state_machines_inst (
     .clock(clock),
-    .lamp_card_reset_activate(lamp_card_reset_activate),
-    .lamp_card_reset_complete(lamp_card_reset_complete),
+    .reset(reset),
     .substate_pb_i_write4_active(substate_pb_i_write4_active),
     .substate_pb_i_write4_complete(substate_pb_i_write4_complete), 
     .substate_pb_read4_active(substate_pb_read4_active),
@@ -225,13 +223,8 @@ always @(posedge clock) begin
     case (command_state)
 
         STATE_INIT: begin
-            lamp_card_reset_activate <= 1'b1;
-            if(lamp_card_reset_complete) begin
-               lamp_card_reset_activate <= 1'b0;
-               command_state <= STATE_IDLE;               
-               OE_Pin        <= 1'b1;
-
-            end   
+           command_state <= STATE_IDLE;               
+           OE_Pin        <= 1'b1;
         end
 
         STATE_IDLE: begin // Idle state: Wait for data in RX FIFO            
@@ -305,44 +298,31 @@ always @(posedge clock) begin
 
                 if(ResponsePending) begin
                    if (command_word == "pb_i__read,") begin
-
                       uart_tx_string[0:10] <= {"p","b","_","i","_","_","r","e","a","d",","};
-
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                       uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
-
                       uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
                       uart_tx_string[14] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
-
                       uart_tx_string[15] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
                       uart_tx_string[16] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
-
                       uart_tx_string[17] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
                       uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
-
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;
-
                    end else if (command_word == "pb_adc4_16,") begin
                       uart_tx_string[0:10] <= {"p","b","_","a","d","c","4","_","1","6",","};
-
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                       uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
-
                       uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
                       uart_tx_string[14] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
-
                       uart_tx_string[15] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
                       uart_tx_string[16] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
-
                       uart_tx_string[17] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
                       uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
-
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
-                      uart_tx_string_len <= 21;
-                      
+                      uart_tx_string_len <= 21;                      
                    end else if (command_word == "pb_i_write,") begin
                        uart_tx_string[0:14] <= {"p","b","_","i","_","w","r","i","t","e",",","O","K",8'h0D,8'h0A};
                        uart_tx_string_len <= 15;
@@ -381,8 +361,8 @@ always @(posedge clock) begin
 end
 
 /********** Continuous Assignment **********/
-assign Debug_Pin = UartPacketReceived;
-assign Debug_Pin2 = clock;
+assign Debug_Pin  = UartPacketReceived;
+assign Debug_Pin2 = uart_tx_process;
 //assign Debug_Pin = Debug_uart;
 //assign Debug_Pin = Debug_spi;
 //assign Debug_Pin = TopLevelDebug;

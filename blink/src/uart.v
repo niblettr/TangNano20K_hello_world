@@ -56,11 +56,10 @@ fifo #(
 );
 
 
-    // Add a timer for quiet period detection
-    reg [15:0] quiet_period_counter = 0; // Counter for quiet period
-    reg quiet_period_counter_started = 1'b0;
+    // Add a timer for idle period detection i.e. a frame or packet
+    reg [15:0] idle_period_counter  = 0;
+    reg idle_counter_started = 1'b0;
     localparam BYTE_PERIOD = BAUD_DIVISOR * 10; // Duration of 1 byte (10 bits at the current baud rate)
-
 
     // Internal registers for transmission
     reg [15:0] tx_baud_counter = 0;          // Counter for baud rate timing
@@ -71,13 +70,13 @@ fifo #(
     /*********************************************************************************************/
     // UART Transmit Logic
     always @(posedge clock) begin
-        tx_fifo_read_en <= 1'b0;                           // Deassert read enable
+        tx_fifo_read_en <= 1'b0;                          // Deassert read enable
+
         if (!transmitting) begin
-           uart_tx_pin = 1'b1;                             // idle High
+           uart_tx_pin <= 1'b1;                            // idle High
         end
 
         if (!transmitting && !tx_fifo_empty) begin
-           //Debug_uart <= ~Debug_uart;
            transmitting <= 1'b1;                           // Start transmission
            tx_shift_reg <= {1'b1, tx_fifo_data_out, 1'b0}; // Load start bit, data, and stop bit
            tx_fifo_read_en <= 1'b1;                        // Read from TX FIFO
@@ -87,16 +86,16 @@ fifo #(
 
         if (transmitting) begin
            if (tx_baud_counter < BAUD_DIVISOR - 1) begin
-              tx_baud_counter <= tx_baud_counter + 1'b1; // Increment baud counter
+              tx_baud_counter <= tx_baud_counter + 1'b1;   // Increment baud counter
            end else begin
-              tx_baud_counter <= 0;                       // Reset baud counter
-              uart_tx_pin <= tx_shift_reg[0];             // Transmit the current bit
-              tx_shift_reg <= {1'b1, tx_shift_reg[9:1]};  // Shift to the next bit
-              bit_index <= bit_index + 1'b1;              // Increment bit index
+              tx_baud_counter <= 0;                        // Reset baud counter
+              uart_tx_pin <= tx_shift_reg[0];              // Transmit the current bit
+              tx_shift_reg <= {1'b1, tx_shift_reg[9:1]};   // Shift to the next bit
+              bit_index <= bit_index + 1'b1;               // Increment bit index
 
-              if (bit_index == 9) begin                   // Stop after transmitting all bits
-                 transmitting <= 1'b0;                    // End transmission
-                 bit_index <= 0;                          // Reset bit index
+              if (bit_index == 9) begin                    // Stop after transmitting all bits
+                 transmitting <= 1'b0;                     // End transmission
+                 bit_index <= 0;                           // Reset bit index
               end
            end
         end
@@ -115,17 +114,15 @@ fifo #(
     // UART Receive Logic
     // Synchronize uart_rx_pin to the clock domain
     always @(posedge clock) begin
-
         uart_rx_pin_sync1 <= uart_rx_pin;
         uart_rx_pin_sync2 <= uart_rx_pin_sync1;
         UartPacketReceived <= 1'b0;
-
     // Start bit detection
     if (!receiving && !uart_rx_pin_sync2 ) begin
         receiving <= 1'b1;
         rx_baud_counter <= BAUD_DIVISOR / 2; // Start sampling in the middle of the start bit
         rx_bit_index <= 0;
-        quiet_period_counter_started <= 1'b0;        
+        idle_counter_started <= 1'b0;        
     end
 
     if (receiving) begin
@@ -147,22 +144,22 @@ fifo #(
                   rx_fifo_data_in <= rx_shift_reg;   // Write received data to FIFO
                end
                 receiving <= 1'b0;                    // End reception
-                quiet_period_counter <= 0;            // Reset quiet period counter
-                quiet_period_counter_started <= 1'b1;
+                idle_period_counter <= 0;             // Reset idle_period_counter
+                idle_counter_started <= 1'b1;
             end
         end
 
     end else begin
         rx_fifo_write_en <= 1'b0; // Deassert write enable when not receiving
-        // Increment quiet period counter when not receiving
-        if (quiet_period_counter_started) begin
-            if (quiet_period_counter < BYTE_PERIOD) begin
-                quiet_period_counter <= quiet_period_counter + 1'b1;
+        // Increment idle_period_counter when not receiving
+        if (idle_counter_started) begin
+            if (idle_period_counter < BYTE_PERIOD) begin
+                idle_period_counter <= idle_period_counter + 1'b1;
             end else begin
-                // Quiet period detected
-                UartPacketReceived <= 1'b1; // Assert UartPacketReceived
-                quiet_period_counter <= 0;   // Reset the counter
-                quiet_period_counter_started <= 1'b0;
+                // idle_period detected
+                UartPacketReceived   <= 1'b1; // Assert UartPacketReceived
+                idle_period_counter  <= 0;    // Reset the counter
+                idle_counter_started <= 1'b0;
             end
         end
     end
