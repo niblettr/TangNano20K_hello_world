@@ -64,7 +64,7 @@ wire [7:0] Data_In_Port;
 
 /********** Command Buffers **********/
 reg [7:0] command_buffer [0:32-1]; // Buffer to store the command
-reg [7:0] command_param_data [0:3]; //  bytes
+reg [7:0] command_param_data [0:3];
 
 /********** Substate Machine Flags **********/
 reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
@@ -171,7 +171,7 @@ typedef enum logic [2:0] {
    STATE_IDLE,
    STATE_PARSE_COMMAND,
    STATE_WAIT_FOR_SUBSTATE,
-   STATE_PAUSE,
+   STATE_WASTE_CYCLES,
    STATE_PASS,
    STATE_FAIL,
    STATE_FIND_COMMA
@@ -296,7 +296,6 @@ always @(posedge clock) begin
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
 
                    if (command_word == "pb_i__read,") begin
-
                       uart_tx_string[0] <= "p";
                       uart_tx_string[1] <= "b";
                       uart_tx_string[2] <= "_";
@@ -344,40 +343,38 @@ always @(posedge clock) begin
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;                      
                    end else if (command_word == "pb_i_write,") begin
-                       uart_tx_string[0] <= "p";
-                       uart_tx_string[1] <= "b";
-                       uart_tx_string[2] <= "_";
-                       uart_tx_string[3] <= "i";
-                       uart_tx_string[4] <= "_";
-                       uart_tx_string[5] <= "w";
-                       uart_tx_string[6] <= "r";
-                       uart_tx_string[7] <= "i";
-                       uart_tx_string[8] <= "t";
-                       uart_tx_string[9] <= "e";
-                       uart_tx_string[10] <= ",";
-                       uart_tx_string[11] <= "O";
-                       uart_tx_string[12] <= "K";
-                       uart_tx_string[13] <= 8'h0D;
-                       uart_tx_string[14] <= 8'h0A;
-                       uart_tx_string_len <= 15;
+                      uart_tx_string[0] <= "p";
+                      uart_tx_string[1] <= "b";
+                      uart_tx_string[2] <= "_";
+                      uart_tx_string[3] <= "i";
+                      uart_tx_string[4] <= "_";
+                      uart_tx_string[5] <= "w";
+                      uart_tx_string[6] <= "r";
+                      uart_tx_string[7] <= "i";
+                      uart_tx_string[8] <= "t";
+                      uart_tx_string[9] <= "e";
+                      uart_tx_string[10] <= ",";
+                      uart_tx_string[11] <= "O";
+                      uart_tx_string[12] <= "K";
+                      uart_tx_string[13] <= 8'h0D;
+                      uart_tx_string[14] <= 8'h0A;
+                      uart_tx_string_len <= 15;
                    end else begin
-                       uart_tx_string[0] <= "o";
-                       uart_tx_string[1] <= "o";
-                       uart_tx_string[2] <= "p";
-                       uart_tx_string[3] <= "s";
-                       uart_tx_string[4] <= 8'h0D;
-                       uart_tx_string[5] <= 8'h0A;
-                       uart_tx_string_len <= 6;
+                      uart_tx_string[0] <= "o";
+                      uart_tx_string[1] <= "o";
+                      uart_tx_string[2] <= "p";
+                      uart_tx_string[3] <= "s";
+                      uart_tx_string[4] <= 8'h0D;
+                      uart_tx_string[5] <= 8'h0A;
+                      uart_tx_string_len <= 6;
                    end
                    uart_tx_process <= 1'b1;
-                
-                ClockCyclesToWaste_8 <= 8'd30;
-                command_state <= STATE_PAUSE;
+                   ClockCyclesToWaste_8 <= 8'd30;
+                   command_state <= STATE_WASTE_CYCLES;
             end
-
         end
 
-        STATE_PAUSE: begin
+        STATE_WASTE_CYCLES: begin
           debug_hex_reg = 8'h56; // example
           if(ClockCyclesToWaste_8 > 0) begin
              ClockCyclesToWaste_8 <= ClockCyclesToWaste_8 -1'b1;
