@@ -369,7 +369,7 @@ always @(posedge clock) begin
                       uart_tx_string_len <= 6;
                    end
                    uart_tx_process <= 1'b1;
-                   ClockCyclesToWaste_8 <= 8'd30;
+                   ClockCyclesToWaste_8 <= 8'd60;
                    command_state <= STATE_WASTE_CYCLES;
             end
         end
