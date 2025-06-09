@@ -48,7 +48,7 @@ SETB    DIR_OUT               ; output driver off
                         substate_wait_counter <= substate_wait_counter + 1'b1;
                     end else begin                        
                         substate_wait_counter <= 0;
-                        wait_multiples <= wait_multiples - 8'd1;
+                        wait_multiples <= wait_multiples - 5'd1;
                     end
                 end else begin
                    substate_pb_i_write4 <= substate_pb_i_write4_next;
