@@ -103,8 +103,8 @@ typedef enum logic [3:0] {
 substate_pb_adc4_t substate_pb_adc4              = SUBSTATE_PB_ADC4_IDLE;
 substate_pb_adc4_t substate_pb_adc4_next         = SUBSTATE_PB_ADC4_IDLE;
 
-reg [4:0] substate_wait_counter  = 0; // 5 bits for up to 31 cycles
-reg [2:0] wait_multiples         = 0;
+reg [4:0] substate_wait_counter  = 0; // 4bit : 0>31
+reg [4:0] wait_multiples         = 0; // 4bit : 0>31
 reg [2:0] Board_ID_ptr           = 0;
 
 reg [7:0] Read_Data_buffer [4];

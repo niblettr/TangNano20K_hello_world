@@ -37,18 +37,18 @@ SETB    DIR_OUT               ; output driver off
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
-                wait_multiples <= 4;
+                wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_DATA;
             end
 
             SUBSTATE_PB_I_WRITE4_WAIT_750N: begin
                 if(wait_multiples) begin
-                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
+                    if (substate_wait_counter < 30 -3) begin // @ 40MHZ, 1 cycle takes 25ns, 750ns  (750/25 = 30. why does 17 work then?)
                         substate_wait_counter <= substate_wait_counter + 1'b1;
                     end else begin                        
                         substate_wait_counter <= 0;
-                        wait_multiples <= wait_multiples - 3'd1;
+                        wait_multiples <= wait_multiples - 8'd1;
                     end
                 end else begin
                    substate_pb_i_write4 <= substate_pb_i_write4_next;
@@ -66,8 +66,8 @@ SETB    DIR_OUT               ; output driver off
 
             //CLR     PB_WR                 ; activate WR-line
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
-                WrP <= ENABLE; // active low
-                wait_multiples <= 2;
+                WrP <= ENABLE; // active low <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                wait_multiples <= 10;     
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR;
             end

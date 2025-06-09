@@ -1,7 +1,8 @@
 
 module Top_module(
     // Clock and Reset
-    input        clock,               // System Clock 27MHz (Pin4)
+    //input        clock,               // System Clock 27MHz (Pin4)
+    input        clock,               // System Clock 27MHz (Pin10)
 
     // Data Ports
     inout  [7:0] DataPortPins,        // Data Port Pins (Pin73, Pin74, Pin75, Pin85, Pin77, Pin15, Pin16, Pin27)
@@ -26,7 +27,7 @@ module Top_module(
 `include "utils.v"
 
     /********** Constants **********/
-parameter CLOCK_FREQUENCY = 27000000;  // 27 MHz crystal oscillator
+parameter CLOCK_FREQUENCY = 40000000;  // 27 MHz crystal oscillator
 parameter BAUD_RATE = 115200;          // Uart Baud Rate (tested up to 2Mb/s - can go way higher)
 
 parameter MAX_CMD_LENGTH = 30;
