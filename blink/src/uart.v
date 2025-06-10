@@ -63,7 +63,7 @@ localparam BYTE_PERIOD = BAUD_DIVISOR * 10;  // 1 byte = 10 bits
 
 // UART TX internals
 reg [15:0] tx_baud_counter = 0;              // Baud rate divider
-reg [3:0]  bit_index = 0;                    // Bit index (0–9)
+reg [3:0]  bit_index = 0;                    // Bit index
 reg [9:0]  tx_shift_reg = 10'b1111111111;    // Start, data, stop bits
 reg        transmitting = 1'b0;              // TX in progress
 
@@ -73,29 +73,29 @@ reg        transmitting = 1'b0;              // TX in progress
     tx_fifo_read_en <= 1'b0;
 
         if (!transmitting) begin
-        uart_tx_pin <= 1'b1;  // Idle high
+           uart_tx_pin <= 1'b1;  // Idle high
 
-        if (!tx_fifo_empty) begin
-            // Start new transmission
-            transmitting       <= 1'b1;
-            tx_shift_reg       <= {1'b1, tx_fifo_data_out, 1'b0}; // {Stop, Data[7:0], Start}
-            tx_fifo_read_en    <= 1'b1;
-            tx_baud_counter    <= 0;
-            bit_index          <= 0;
-        end
-    end else begin
+           if (!tx_fifo_empty) begin
+               // Start new transmission
+               transmitting       <= 1'b1;
+               tx_shift_reg       <= {1'b1, tx_fifo_data_out, 1'b0}; // {Stop, Data[7:0], Start}
+               tx_fifo_read_en    <= 1'b1;
+               tx_baud_counter    <= 0;
+               bit_index          <= 0;
+           end
+       end else begin
         // Ongoing transmission
            if (tx_baud_counter < BAUD_DIVISOR - 1) begin
-            tx_baud_counter <= tx_baud_counter + 1'b1;
+             tx_baud_counter <= tx_baud_counter + 1'b1;
            end else begin
-            tx_baud_counter <= 0;
-            uart_tx_pin     <= tx_shift_reg[0];         // Output current bit
-            tx_shift_reg    <= {1'b1, tx_shift_reg[9:1]}; // Logical shift right
-            bit_index       <= bit_index + 1'b1;
 
-            if (bit_index == 9) begin
-                transmitting <= 1'b0; // All bits sent
-                bit_index    <= 0;
+             tx_baud_counter <= 0;
+             uart_tx_pin     <= tx_shift_reg[0];         // Output current bit
+             tx_shift_reg    <= {1'b1, tx_shift_reg[9:1]}; // Logical shift right
+             bit_index       <= bit_index + 1'b1;
+
+             if (bit_index == 9) begin
+                transmitting <= 1'b0; // All bits sent                .
               end
            end
         end

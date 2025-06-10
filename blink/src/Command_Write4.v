@@ -43,18 +43,20 @@ SETB    DIR_OUT               ; output driver off
             end
 
             SUBSTATE_PB_I_WRITE4_WAIT_750N: begin
-                if(wait_multiples) begin
-                    if (substate_wait_counter < 30 -3) begin // @ 40MHZ, 1 cycle takes 25ns, 750ns  (750/25 = 30. why does 17 work then?)
-                        substate_wait_counter <= substate_wait_counter + 1'b1;
-                    end else begin                        
-                        substate_wait_counter <= 0;
-                        wait_multiples <= wait_multiples - 5'd1;
+               if (substate_wait_counter < 30 -1) begin // @ 40MHZ, 1 cycle takes 25ns, 750ns
+                  substate_wait_counter <= substate_wait_counter + 1'b1;
+               end else begin                   
+                   if(wait_multiples <= 1) begin  // preempt wait_multiples decrementing to zero
+                       substate_wait_counter <= 1;
+                       wait_multiples <= 0;
+                       substate_pb_i_write4 <= substate_pb_i_write4_next;
+                    end else begin
+                       wait_multiples <= wait_multiples - 5'd1;
+                       substate_wait_counter <= 0;
                     end
-                end else begin
-                   substate_pb_i_write4 <= substate_pb_i_write4_next;
                 end
             end
-
+ 
             //MOVX    @R0,A                 ; load data to output latch
             //CLR     DIR_OUT               ; output driver on
             SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
@@ -67,7 +69,7 @@ SETB    DIR_OUT               ; output driver off
             //CLR     PB_WR                 ; activate WR-line
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
                 WrP <= ENABLE; // active low <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                wait_multiples <= 10;     
+                wait_multiples <= 10;      // 1=776ns, 2=1.448us, 3=2.152us, 4=2.848
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR;
             end

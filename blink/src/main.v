@@ -273,11 +273,11 @@ always @(posedge clock) begin
                 //bypass_debug <= 1'b1;
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_adc4_16,") begin
-                CommandType = 0;
+                CommandType = 1;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
              end else if (command_word == "pb_adc4_08,") begin
-                CommandType = 1;
+                CommandType = 0;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
             end else if (command_word == "test______,") begin
@@ -320,7 +320,7 @@ always @(posedge clock) begin
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;
 
-                   end else if (command_word == "pb_adc4_16,") begin
+                   end else if (command_word == "pb_adc4_16," || command_word == "pb_adc4_08,") begin
                       uart_tx_string[0] <= "p";
                       uart_tx_string[1] <= "b";
                       uart_tx_string[2] <= "_";
@@ -329,8 +329,13 @@ always @(posedge clock) begin
                       uart_tx_string[5] <= "c";
                       uart_tx_string[6] <= "4";
                       uart_tx_string[7] <= "_";
-                      uart_tx_string[8] <= "1";
-                      uart_tx_string[9] <= "6";
+                      if(command_word == "pb_adc4_08,") begin
+                         uart_tx_string[8] <= "0";
+                         uart_tx_string[9] <= "8";
+                      end else begin
+                         uart_tx_string[8] <= "1";
+                         uart_tx_string[9] <= "6";
+                      end
                       uart_tx_string[10] <= ",";
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
                       uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
