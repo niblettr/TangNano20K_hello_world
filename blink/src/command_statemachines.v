@@ -275,11 +275,12 @@ function asm_pb_i_address4_test(test_adr_y):
 */
 
 
+// remeber, test_adr_y = command_param_data[0]
     if (substate_pb_test_active) begin
         case (substate_pb_test)
             SUBSTATE_PB_TEST_IDLE: begin
                 Board_ID_ptr    <= 0;
-                data_dir        <= data_dir <= DIR_INPUT;
+                data_dir <= DIR_INPUT;
                 wait_multiples  <= 1;
                 substate_pb_test_next = SUBSTATE_PB_TEST_DONE;
                 substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
@@ -309,6 +310,16 @@ function asm_pb_i_address4_test(test_adr_y):
                    substate_pb_test <= substate_pb_test_next;
                 end
             end
+
+            SUBSTATE_PB_TEST_INC_CARD_ID_LOOP: begin               
+               if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1  
+                  Board_ID_ptr <= Board_ID_ptr + 3'd1; 
+                  substate_pb_test <= SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
+               end else begin
+                   substate_pb_test <= SUBSTATE_PB_TEST_DONE;
+               end
+            end
+
             SUBSTATE_PB_TEST_DONE: begin
                 //if(CommandType == 0) begin
                    ResponseBytes[0:3] <= Read_Data_buffer[0:3];
@@ -465,6 +476,7 @@ GOTO LOOP4
                    substate_pb_adc1 <= substate_pb_adc1_next;
                 end
             end
+
             SUBSTATE_PB_ADC4_DONE: begin
                 //if(CommandType == 0) begin
                    ResponseBytes[0:3] <= Read_Data_buffer[0:3];
