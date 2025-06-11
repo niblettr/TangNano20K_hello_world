@@ -127,12 +127,10 @@ substate_pb_adc1_t substate_pb_adc1_next         = SUBSTATE_PB_ADC1_IDLE;
 typedef enum logic [3:0] {
     SUBSTATE_PB_TEST_IDLE              = 4'b0000,
     SUBSTATE_PB_TEST_PRE_DELAY,
-    SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID,
+    SUBSTATE_PB_TEST_ADDR_ON,
     SUBSTATE_PB_TEST_WAIT_750N,
-    SUBSTATE_PB_TEST_ASSERT_DATA,
-    SUBSTATE_PB_TEST_ASSERT_WR_ENABLE,
-    SUBSTATE_PB_TEST_RELEASE_WR_ENABLE,
-    SUBSTATE_PB_TEST_RELEASE_DATA,
+    SUBSTATE_TEST_READ_DATA,
+    SUBSTATE_TEST_CTR_OFF,
     SUBSTATE_PB_TEST_INC_CARD_ID_LOOP,
     SUBSTATE_PB_TEST_TEST_READ,
     SUBSTATE_PB_TEST_DONE              
@@ -265,7 +263,7 @@ function asm_pb_i_address4_test(test_adr_y):
         
         P1 = board + R4 + TEST_ADDR_ON // Set P1 = board + (8 * test_adr_y) + TEST_ADDR_ON        
         wait_some_cycles() // Wait for data ready (simulate with two NOPs)        
-        data = read_data_bus() // Read address via data bus        
+        data = read_data_bus() // Read address via data bus
         P1 = NO_BOARD_IDLE | 0 | CTR_OFF // Reset Test_RD line: P1 = NO_BOARD_IDLE | 0 | CTR_OFF        
         store_result(R1, result) // Store result (0 means OK) in TEST_Y_READ[]
         R1 = R1 + 1
@@ -276,6 +274,7 @@ function asm_pb_i_address4_test(test_adr_y):
 
 
 // remeber, test_adr_y = command_param_data[0]
+// P1 = Port1 :- 
     if (substate_pb_test_active) begin
         case (substate_pb_test)
             SUBSTATE_PB_TEST_IDLE: begin
@@ -286,16 +285,15 @@ function asm_pb_i_address4_test(test_adr_y):
                 substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
                 end
 
-            //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
-            //#define BOARD_ALL            0x05 // -----101
-            SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 5;//BOARD_ALL;
-                AddessPortPin <= PORT_MUX;
-                WrP <= DISABLE; // CTR_OFF in the assembler
-                RdP <= DISABLE; // CTR_OFF in the assembler
-                wait_multiples <= 1;
+            //P1 = board + R4 + TEST_ADDR_ON // Set P1 = board + (8 * test_adr_y) + TEST_ADDR_ON
+            SUBSTATE_PB_TEST_ADDR_ON : begin // loop start
+                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
+                AddessPortPin <= command_param_data[0];
+                WrP <= ENABLE; // TEST_ADDR_ON in the assembler
+                RdP <= ENABLE; // TEST_ADDR_ON in the assembler
+                wait_multiples <= 3; // total guess for time being...
                 substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
-                substate_pb_test_next <= SUBSTATE_PB_TEST_DONE; // <<<<<<<<<<<<<<<<<<<<<<
+                substate_pb_test_next <= SUBSTATE_TEST_READ_DATA;
             end
 
             SUBSTATE_PB_TEST_WAIT_750N: begin
@@ -311,10 +309,30 @@ function asm_pb_i_address4_test(test_adr_y):
                 end
             end
 
+            //data = read_data_bus() // Read address via data bus
+            SUBSTATE_TEST_READ_DATA: begin
+               Read_Data_buffer[Board_ID_ptr] <= Data_In_Port;
+               wait_multiples <= 1;
+               substate_pb_test_next <= SUBSTATE_TEST_CTR_OFF;
+               substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
+            end
+
+            //P1 = NO_BOARD_IDLE | 0 | CTR_OFF // Reset Test_RD line: P1 = NO_BOARD_IDLE | 0 | CTR_OFF
+
+            //#define NO_BOARD_IDLE        0x07 // -----111
+            //#define CTR_OFF              0xC0 // 11------
+            SUBSTATE_TEST_CTR_OFF: begin
+
+
+                WrP <= DISABLE; // CTR_OFF in the assembler
+                RdP <= DISABLE; // CTR_OFF in the assembler
+                substate_pb_test_next <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
+            end
+
             SUBSTATE_PB_TEST_INC_CARD_ID_LOOP: begin               
                if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
-                  substate_pb_test <= SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
+                  substate_pb_test <= SUBSTATE_PB_TEST_ADDR_ON; // loop back round to do remaining cards
                end else begin
                    substate_pb_test <= SUBSTATE_PB_TEST_DONE;
                end

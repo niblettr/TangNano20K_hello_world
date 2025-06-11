@@ -33,7 +33,7 @@ SETB    DIR_OUT               ; output driver off
 
             //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
             SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
+                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
