@@ -11,7 +11,7 @@ module Top_module(
 
     // Control Signals
     output reg       TestAddressP,    // Test Address (Pin30)
-    output reg       RdP,             // Read Enable (Pin31)
+    output reg       RdP,             // Read Enable   Pin31)
     output reg       WrP,             // Write Enable (Pin17)
     output reg       LampResetPin,    // Reset Signal (Pin20)
     output reg       OE_Pin,          // Level Shifter Enable (Pin19)
