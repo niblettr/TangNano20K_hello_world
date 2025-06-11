@@ -21,8 +21,10 @@ module Top_module(
     input            Uart_RX_Pin,     // UART Receive Pin (Pin49)
 
     // Debug Signals
-    output           Debug_Pin,       // Debug Toggle (Pin76)
-    output           Debug_Pin2       // Debug Toggle (Pin80)
+    output           Debug_Pin,       // Debug Toggle (Pin72)
+    output           Debug_Pin2,      // Debug Toggle (Pin71)
+    output           Debug_Pin3,      // Debug Toggle (Pin53)
+    output           Error_pin        // Debug Toggle (Pin52)
 );
 `include "utils.v"
 
@@ -72,10 +74,12 @@ reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the s
 reg       substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_adc1_active         = 1'b0;   // Flag to indicate if the substate machine is active
+reg       substate_pb_test_active         = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
 reg       substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
 reg       substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
 reg       substate_pb_adc1_complete       = 1'b0;   // Flag to indicate substate completion
+reg       substate_pb_test_complete       = 1'b0;   // Flag to indicate substate completion
 
 /********** UART State Machine **********/
 reg [2:0]  uart_tx_state = 3'b000;        // State machine for UART string transmission
@@ -124,11 +128,13 @@ state_machines #(
     .substate_pb_i_write4_active(substate_pb_i_write4_active),
     .substate_pb_i_write4_complete(substate_pb_i_write4_complete), 
     .substate_pb_read4_active(substate_pb_read4_active),
+    .substate_pb_test_active(substate_pb_test_active),
     .substate_pb_read4_complete(substate_pb_read4_complete),
     .substate_pb_adc4_active(substate_pb_adc4_active),
     .substate_pb_adc4_complete(substate_pb_adc4_complete),
     .substate_pb_adc1_active(substate_pb_adc1_active),
     .substate_pb_adc1_complete(substate_pb_adc1_complete),
+    .substate_pb_test_complete(substate_pb_test_complete),
     .BOARD_X(BOARD_X),
     .CommandType(CommandType),
     .command_param_data(command_param_data),
@@ -181,11 +187,6 @@ typedef enum logic [2:0] {
    STATE_FAIL,
    STATE_FIND_COMMA
 } state_t;
-
-function automatic bit str_eq(input [87:0] a, input [87:0] b);
-  str_eq = (a === b);
-endfunction
-
 
 always @(posedge clock) begin
 
@@ -292,8 +293,8 @@ always @(posedge clock) begin
                 CommandType = 0;
                 substate_pb_adc1_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
-            end else if (command_word == "test______,") begin
-                substate_pb_adc4_active <= 1'b1; // Activate the new state machine
+            end else if (command_word == "pb_test_A4,") begin
+                substate_pb_test_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; 
             end else begin
                 debug_hex_reg = 8'hFE; // example
@@ -302,12 +303,13 @@ always @(posedge clock) begin
         end
 
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
-            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete || substate_pb_adc1_complete) begin 
+            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete || substate_pb_adc1_complete || substate_pb_test_complete) begin 
 
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc1_active     <= 1'b0; // Deactivate the substate machine
+                substate_pb_test_active     <= 1'b0; // Deactivate the substate machine
 
                    if (command_word == "pb_i__read,") begin
                       uart_tx_string[0] <= "p";
@@ -376,6 +378,23 @@ always @(posedge clock) begin
                       uart_tx_string[7] <= "i";
                       uart_tx_string[8] <= "t";
                       uart_tx_string[9] <= "e";
+                      uart_tx_string[10] <= ",";
+                      uart_tx_string[11] <= "O";
+                      uart_tx_string[12] <= "K";
+                      uart_tx_string[13] <= 8'h0D;
+                      uart_tx_string[14] <= 8'h0A;
+                      uart_tx_string_len <= 15;
+                   end else if (command_word == "pb_test_A4,") begin
+                      uart_tx_string[0] <= "p";
+                      uart_tx_string[1] <= "b";
+                      uart_tx_string[2] <= "_";
+                      uart_tx_string[3] <= "t";
+                      uart_tx_string[4] <= "e";
+                      uart_tx_string[5] <= "s";
+                      uart_tx_string[6] <= "t";
+                      uart_tx_string[7] <= "_";
+                      uart_tx_string[8] <= "A";
+                      uart_tx_string[9] <= "4";
                       uart_tx_string[10] <= ",";
                       uart_tx_string[11] <= "O";
                       uart_tx_string[12] <= "K";

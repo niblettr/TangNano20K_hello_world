@@ -9,12 +9,14 @@ module state_machines #(
     input       reg       substate_pb_read4_active,
     input       reg       substate_pb_adc4_active,
     input       reg       substate_pb_adc1_active,
+    input       reg       substate_pb_test_active,
 
     // Completion Outputs
     output      reg       substate_pb_i_write4_complete, 
     output      reg       substate_pb_read4_complete,
     output      reg       substate_pb_adc4_complete,
     output      reg       substate_pb_adc1_complete, 
+    output      reg       substate_pb_test_complete, 
 
     // Board Control Outputs
     output      reg [3:0] BOARD_X,
@@ -122,6 +124,23 @@ typedef enum logic [3:0] {
 substate_pb_adc1_t substate_pb_adc1              = SUBSTATE_PB_ADC1_IDLE;
 substate_pb_adc1_t substate_pb_adc1_next         = SUBSTATE_PB_ADC1_IDLE;
 
+typedef enum logic [3:0] {
+    SUBSTATE_PB_TEST_IDLE              = 4'b0000,
+    SUBSTATE_PB_TEST_PRE_DELAY,
+    SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID,
+    SUBSTATE_PB_TEST_WAIT_750N,
+    SUBSTATE_PB_TEST_ASSERT_DATA,
+    SUBSTATE_PB_TEST_ASSERT_WR_ENABLE,
+    SUBSTATE_PB_TEST_RELEASE_WR_ENABLE,
+    SUBSTATE_PB_TEST_RELEASE_DATA,
+    SUBSTATE_PB_TEST_INC_CARD_ID_LOOP,
+    SUBSTATE_PB_TEST_TEST_READ,
+    SUBSTATE_PB_TEST_DONE              
+} substate_pb_test_t;
+
+substate_pb_test_t substate_pb_test              = SUBSTATE_PB_TEST_IDLE;
+substate_pb_test_t substate_pb_test_next         = SUBSTATE_PB_TEST_IDLE;
+
 reg [4:0] substate_wait_counter  = 1; // NOTE: set to 1 instead of 0 because statemachine transitions waste 1 clock cyle
 reg [4:0] wait_multiples         = 0; // 4bit : 0>31
 reg [2:0] Board_ID_ptr           = 0;
@@ -145,6 +164,169 @@ always @(posedge clock) begin
 
 
 /************************************************************************************************************************/
+
+/*
+;*****************************************************************************************
+; function  asm_pb_i_address4_test    (test_adr_y) via (R7)
+;*****************************************************************************************
+; function:  test address y on lamp switch card 1,2,3,4
+; The result is stored in TEST_CARD_Y_OUT[]
+; parameters
+; test_adr_y        defines test address from 0 to 7 (R7)
+;*****************************************************************************************
+>>>>>>>>>>>>>>>>>>>>>>>>>>>     _asm_pb_i_address4_test:
+MOV     R1,#TEST_Y_READ       ; load startaddress from TEST_Y_READ[]
+
+; prepare compare-value
+; ---------------------
+; XXX=TEST_Y
+MOV     A,R7                  ; A=00000XXX
+SWAP    A                     ; A=0XXX0000
+RL      A                     ; A=XXX00000
+SETB    ACC.0                 ; A=XXX00001
+MOV     R3,A                  ; R3=(32 * TEST_Y) + 1 or XXX00001
+
+MOV     A,R7                  ; prepare address port1 value
+RL      A
+RL      A
+RL      A
+MOV     R4,A                  ; R4=8*test_adr_y=00XXX000
+
+;ST800: P1 = 00XXXBBB where 00=TEST_ADDR_ON, XXX=TEST_Y(0-7) and BBB=000=BOARD_1
+ADD     A,#BOARD_1 + TEST_ADDR_ON
+MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
+NOP                           ; wait for data ready
+NOP
+MOVX    A,@R0                 ; read addresses via data bus
+MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
+
+XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
+MOV     @R1,A                 ; store Result(0 incidates o.k.)
+INC     R1
+
+;ST800: P1 = 00XXXBBB where 00=TEST_ADDR_ON, XXX=TEST_Y(0-7) and BBB=001=BOARD_2
+MOV     A,R4                  ; A=8 * test_adr_y
+
+ADD     A,#BOARD_2 + TEST_ADDR_ON
+MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
+NOP                           ; wait for data ready
+NOP
+MOVX    A,@R0                 ; read addresses via data bus
+MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
+
+XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
+MOV     @R1,A                 ; store Result(0 incidates o.k.)
+INC     R1
+
+;ST800: P1 = 00XXXBBB where 00=TEST_ADDR_ON, XXX=TEST_Y(0-7) and BBB=010=BOARD_3
+MOV     A,R4                  ; A=8 * test_adr_y
+
+ADD     A,#BOARD_3 + TEST_ADDR_ON
+
+MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
+NOP                           ; wait for data ready
+NOP
+MOVX    A,@R0                 ; read addresses via data bus
+MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
+
+XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
+MOV     @R1,A                 ; store Result(0 incidates o.k.)
+INC     R1
+
+;ST800: P1 = 00XXXBBB where 00=TEST_ADDR_ON, XXX=TEST_Y(0-7) and BBB=011=BOARD_4
+MOV     A,R4                  ; A=8 * test_adr_y
+
+ADD     A,#BOARD_4 + TEST_ADDR_ON
+
+MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
+NOP                           ; wait for data ready
+NOP
+MOVX    A,@R0                 ; read addresses via data bus
+MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
+
+XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
+MOV     @R1,A                 ; store Result(0 incidates o.k.)
+
+RET
+*/
+
+
+/*
+///////////////////////////////////////////////////////////////////////////////////////////////
+// Pseudocode for asm_pb_i_address4_test(test_adr_y)
+// Purpose: Test address 'test_adr_y' on lamp switch cards 1-4
+// Result is stored in TEST_CARD_Y_OUT[] array
+
+function asm_pb_i_address4_test(test_adr_y):
+    R1 = address of TEST_Y_READ      // Output/result pointer    
+    R4 = test_adr_y << 3 // Prepare address port1 value: R4 = 8 * test_adr_y
+
+    for board in [BOARD_1, BOARD_2, BOARD_3, BOARD_4]:
+        
+        P1 = board + R4 + TEST_ADDR_ON // Set P1 = board + (8 * test_adr_y) + TEST_ADDR_ON        
+        wait_some_cycles() // Wait for data ready (simulate with two NOPs)        
+        data = read_data_bus() // Read address via data bus        
+        P1 = NO_BOARD_IDLE | 0 | CTR_OFF // Reset Test_RD line: P1 = NO_BOARD_IDLE | 0 | CTR_OFF        
+        store_result(R1, result) // Store result (0 means OK) in TEST_Y_READ[]
+        R1 = R1 + 1
+    // End for
+
+    return
+*/
+
+
+    if (substate_pb_test_active) begin
+        case (substate_pb_test)
+            SUBSTATE_PB_TEST_IDLE: begin
+                Board_ID_ptr    <= 0;
+                data_dir        <= data_dir <= DIR_INPUT;
+                wait_multiples  <= 1;
+                substate_pb_test_next = SUBSTATE_PB_TEST_DONE;
+                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
+                end
+
+            //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
+            //#define BOARD_ALL            0x05 // -----101
+            SUBSTATE_PB_TEST_ASSERT_ADDRESS_ID: begin
+                BOARD_X <= 5;//BOARD_ALL;
+                AddessPortPin <= PORT_MUX;
+                WrP <= DISABLE; // CTR_OFF in the assembler
+                RdP <= DISABLE; // CTR_OFF in the assembler
+                wait_multiples <= 1;
+                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
+                substate_pb_test_next <= SUBSTATE_PB_TEST_DONE; // <<<<<<<<<<<<<<<<<<<<<<
+            end
+
+            SUBSTATE_PB_TEST_WAIT_750N: begin
+                if(wait_multiples) begin
+                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
+                        substate_wait_counter <= substate_wait_counter + 1'b1;
+                    end else begin                        
+                        substate_wait_counter <= 0;
+                        wait_multiples <= wait_multiples - 3'd1;
+                    end
+                end else begin
+                   substate_pb_test <= substate_pb_test_next;
+                end
+            end
+            SUBSTATE_PB_TEST_DONE: begin
+                //if(CommandType == 0) begin
+                   ResponseBytes[0:3] <= Read_Data_buffer[0:3];
+                   ResponseByteCount  <= 4;
+                //end
+
+                substate_pb_test_complete <= 1'b1;
+                substate_pb_test <= SUBSTATE_PB_TEST_IDLE;
+            end
+
+        endcase
+    end else begin
+        substate_pb_test_complete <= 1'b0; // Clear the flag when substate_pb_i_read4 is inactive
+    end // end of if (substate_pb_i_read4_active) begin
+
+
+
+
 /*
 ; mux_inp                   defines Analog Muxer channel
 ; buf_addr                  defines address for storing adc output from 1. board
@@ -191,7 +373,7 @@ GOTO LOOP4
         case (substate_pb_adc4)
             SUBSTATE_PB_ADC4_IDLE: begin
                 Board_ID_ptr <= 0;
-                data_dir        <= 1; // set data_port to output mode
+                data_dir <= DIR_INPUT;
                 wait_multiples <= 3;
                 substate_pb_adc4_next = SUBSTATE_PB_ADC4_DONE;
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
@@ -253,7 +435,7 @@ GOTO LOOP4
         case (substate_pb_adc1)
             SUBSTATE_PB_ADC1_IDLE: begin
                 Board_ID_ptr <= 0;
-                data_dir        <= 1; // set data_port to output mode
+                data_dir <= DIR_INPUT;
                 wait_multiples <= 3;
                 substate_pb_adc1_next = SUBSTATE_PB_ADC1_DONE;
                 substate_pb_adc1 <= SUBSTATE_PB_ADC1_WAIT_750N;
@@ -297,9 +479,6 @@ GOTO LOOP4
     end else begin
         substate_pb_adc1_complete <= 1'b0; // Clear the flag when substate_pb_i_read4 is inactive
     end // end of if (substate_pb_i_read4_active) begin
-
-
-
 
 
 
