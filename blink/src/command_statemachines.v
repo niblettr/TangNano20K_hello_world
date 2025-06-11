@@ -281,7 +281,7 @@ function asm_pb_i_address4_test(test_adr_y):
                 Board_ID_ptr    <= 0;
                 data_dir <= DIR_INPUT;
                 wait_multiples  <= 1;
-                substate_pb_test_next = SUBSTATE_PB_TEST_DONE;
+                substate_pb_test_next = SUBSTATE_PB_TEST_ADDR_ON;   
                 substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
                 end
 
@@ -322,11 +322,11 @@ function asm_pb_i_address4_test(test_adr_y):
             //#define NO_BOARD_IDLE        0x07 // -----111
             //#define CTR_OFF              0xC0 // 11------
             SUBSTATE_TEST_CTR_OFF: begin
-
-
-                WrP <= DISABLE; // CTR_OFF in the assembler
-                RdP <= DISABLE; // CTR_OFF in the assembler
-                substate_pb_test_next <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
+                AddessPortPin        <= 0;       // | 0
+                WrP                  <= DISABLE; // CTR_OFF in the assembler
+                RdP                  <= DISABLE; // CTR_OFF in the assembler
+                BOARD_X              <= 0;       // NO_BOARD_IDLE
+                substate_pb_test <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
             end
 
             SUBSTATE_PB_TEST_INC_CARD_ID_LOOP: begin               

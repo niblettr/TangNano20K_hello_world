@@ -396,11 +396,17 @@ always @(posedge clock) begin
                       uart_tx_string[8] <= "A";
                       uart_tx_string[9] <= "4";
                       uart_tx_string[10] <= ",";
-                      uart_tx_string[11] <= "O";
-                      uart_tx_string[12] <= "K";
-                      uart_tx_string[13] <= 8'h0D;
-                      uart_tx_string[14] <= 8'h0A;
-                      uart_tx_string_len <= 15;
+                      uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
+                      uart_tx_string[12] <= hex_to_ascii_nib( ResponseBytes[0] & 8'h0F);
+                      uart_tx_string[13] <= hex_to_ascii_nib((ResponseBytes[1] & 8'hF0) >> 4);
+                      uart_tx_string[14] <= hex_to_ascii_nib (ResponseBytes[1] & 8'h0F);
+                      uart_tx_string[15] <= hex_to_ascii_nib((ResponseBytes[2] & 8'hF0) >> 4);
+                      uart_tx_string[16] <= hex_to_ascii_nib (ResponseBytes[2] & 8'h0F);
+                      uart_tx_string[17] <= hex_to_ascii_nib((ResponseBytes[3] & 8'hF0) >> 4);
+                      uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
+                      uart_tx_string[19] <= 8'h0D;
+                      uart_tx_string[20] <= 8'h0A;
+                      uart_tx_string_len <= 21;
                    end else begin
                       uart_tx_string[0] <= "o";
                       uart_tx_string[1] <= "o";
