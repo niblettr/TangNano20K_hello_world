@@ -69,7 +69,7 @@ SETB    DIR_OUT               ; output driver off
             //CLR     PB_WR                 ; activate WR-line
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
                 WrP <= ENABLE; // active low <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                wait_multiples <= 10;      // 1=776ns, 2=1.448us, 3=2.152us, 4=2.848
+                wait_multiples <= 2;      // 1=776ns, 2=1.448us, 3=2.152us, 4=2.848
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR;
             end

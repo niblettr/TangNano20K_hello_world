@@ -71,9 +71,11 @@ reg [7:0] command_param_data [0:3];
 reg       substate_pb_i_write4_active     = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_read4_active        = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_adc4_active         = 1'b0;   // Flag to indicate if the substate machine is active
+reg       substate_pb_adc1_active         = 1'b0;   // Flag to indicate if the substate machine is active
 reg       substate_pb_i_write4_complete   = 1'b0;   // Flag to indicate substate completion
 reg       substate_pb_read4_complete      = 1'b0;   // Flag to indicate substate completion
 reg       substate_pb_adc4_complete       = 1'b0;   // Flag to indicate substate completion
+reg       substate_pb_adc1_complete       = 1'b0;   // Flag to indicate substate completion
 
 /********** UART State Machine **********/
 reg [2:0]  uart_tx_state = 3'b000;        // State machine for UART string transmission
@@ -125,6 +127,8 @@ state_machines #(
     .substate_pb_read4_complete(substate_pb_read4_complete),
     .substate_pb_adc4_active(substate_pb_adc4_active),
     .substate_pb_adc4_complete(substate_pb_adc4_complete),
+    .substate_pb_adc1_active(substate_pb_adc1_active),
+    .substate_pb_adc1_complete(substate_pb_adc1_complete),
     .BOARD_X(BOARD_X),
     .CommandType(CommandType),
     .command_param_data(command_param_data),
@@ -177,6 +181,10 @@ typedef enum logic [2:0] {
    STATE_FAIL,
    STATE_FIND_COMMA
 } state_t;
+
+function automatic bit str_eq(input [87:0] a, input [87:0] b);
+  str_eq = (a === b);
+endfunction
 
 
 always @(posedge clock) begin
@@ -280,6 +288,10 @@ always @(posedge clock) begin
                 CommandType = 0;
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
+             end else if (command_word == "pb_adc1_16,") begin
+                CommandType = 0;
+                substate_pb_adc1_active <= 1'b1; // Activate the new state machine
+                command_state <= STATE_WAIT_FOR_SUBSTATE; // Transition to a wait state
             end else if (command_word == "test______,") begin
                 substate_pb_adc4_active <= 1'b1; // Activate the new state machine
                 command_state <= STATE_WAIT_FOR_SUBSTATE; 
@@ -290,11 +302,12 @@ always @(posedge clock) begin
         end
 
         STATE_WAIT_FOR_SUBSTATE: begin // note: only one substatemachine is active at any given time...
-            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete) begin 
+            if (substate_pb_i_write4_complete || substate_pb_read4_complete || substate_pb_adc4_complete || substate_pb_adc1_complete) begin 
 
                 substate_pb_i_write4_active <= 1'b0; // Deactivate the substate machine
                 substate_pb_read4_active    <= 1'b0; // Deactivate the substate machine
                 substate_pb_adc4_active     <= 1'b0; // Deactivate the substate machine
+                substate_pb_adc1_active     <= 1'b0; // Deactivate the substate machine
 
                    if (command_word == "pb_i__read,") begin
                       uart_tx_string[0] <= "p";
@@ -320,21 +333,25 @@ always @(posedge clock) begin
                       uart_tx_string[20] <= 8'h0A;
                       uart_tx_string_len <= 21;
 
-                   end else if (command_word == "pb_adc4_16," || command_word == "pb_adc4_08,") begin
+                   end else if (command_word == "pb_adc1_16," || command_word == "pb_adc4_16," || command_word == "pb_adc4_08,") begin
                       uart_tx_string[0] <= "p";
                       uart_tx_string[1] <= "b";
                       uart_tx_string[2] <= "_";
                       uart_tx_string[3] <= "a";
                       uart_tx_string[4] <= "d";
                       uart_tx_string[5] <= "c";
-                      uart_tx_string[6] <= "4";
-                      uart_tx_string[7] <= "_";
-                      if(command_word == "pb_adc4_08,") begin
-                         uart_tx_string[8] <= "0";
-                         uart_tx_string[9] <= "8";
+                      if(command_word == "pb_adc1_16,") begin
+                         uart_tx_string[6] <= "1";  // pb_adc1
                       end else begin
+                         uart_tx_string[6] <= "4";  // pb_adc4
+                      end 
+                      uart_tx_string[7] <= "_";
+                      if(command_word == "pb_adc4_16," || command_word == "pb_adc1_16,") begin
                          uart_tx_string[8] <= "1";
                          uart_tx_string[9] <= "6";
+                      end else begin
+                         uart_tx_string[8] <= "0";
+                         uart_tx_string[9] <= "8";
                       end
                       uart_tx_string[10] <= ",";
                       uart_tx_string[11] <= hex_to_ascii_nib((ResponseBytes[0] & 8'hF0) >> 4);
@@ -347,7 +364,7 @@ always @(posedge clock) begin
                       uart_tx_string[18] <= hex_to_ascii_nib (ResponseBytes[3] & 8'h0F);
                       uart_tx_string[19] <= 8'h0D;
                       uart_tx_string[20] <= 8'h0A;
-                      uart_tx_string_len <= 21;                      
+                      uart_tx_string_len <= 21;
                    end else if (command_word == "pb_i_write,") begin
                       uart_tx_string[0] <= "p";
                       uart_tx_string[1] <= "b";
