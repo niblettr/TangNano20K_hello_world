@@ -21,7 +21,7 @@ module state_machines #(
     // Board Control Outputs
     output      reg [3:0] BOARD_X,
     output      reg [2:0] AddessPort,
-    output      reg       TestAddressP,
+    output      reg       TestAddress,
     output      reg       PB_RD,
     output      reg       PB_WR,
     output      reg       LampResetPin,

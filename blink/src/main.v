@@ -136,13 +136,13 @@ state_machines #(
     .CommandType(CommandType),
     .command_param_data(command_param_data),
     .Data_Out_Port(Data_Out_Port),
+    .Data_In_Port(Data_In_Port),
+    .data_dir(data_dir),
     .PB_RD(PB_RD),
     .PB_WR(PB_WR),
     .AddessPort(AddessPort),
-    .TestAddressP(TestAddressP),
+    .TestAddress(TestAddress),
     .LampResetPin(LampResetPin),
-    .Data_In_Port(Data_In_Port),
-    .data_dir(data_dir),
     .ResponseBytes(ResponseBytes),
     .ResponseByteCount(ResponseByteCount)
 );
@@ -454,7 +454,7 @@ assign Debug_Pin2 = uart_tx_process;
 /********** Continuous Assignment **********/
 // Assign bidirectional port with tristate buffer behavior
 assign DataPort = (data_dir) ? Data_Out_Port : 8'bz;  // drive Data_Out_Port if output
-assign Data_In_Port = DataPort;                      // read pins as input
+assign Data_In_Port = DataPort;                       // read pins as input
 
 
 endmodule
