@@ -24,9 +24,8 @@ MOVX    @DPTR,A               ; store data to DPR
 
             //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
             SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
+                BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                WrP <= DISABLE;
                 RdP <= ENABLE;
                 wait_multiples <= 1;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;

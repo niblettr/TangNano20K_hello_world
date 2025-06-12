@@ -36,10 +36,8 @@ function asm_pb_i_address4_test(test_adr_y):
 
             //P1 = board + R4 + TEST_ADDR_ON // Set P1 = board + (8 * test_adr_y) + TEST_ADDR_ON
             SUBSTATE_PB_TEST_ADDR_ON : begin // loop start
-                BOARD_X <= 4'b0001 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
-                AddessPortPin <= command_param_data[0];
-                WrP <= ENABLE; // TEST_ADDR_ON in the assembler
-                RdP <= ENABLE; // TEST_ADDR_ON in the assembler
+                BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
+                TEST_ADDR_ON;
                 wait_multiples <= 3; // total guess for time being...
                 substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
                 substate_pb_test_next <= SUBSTATE_TEST_READ_DATA;
@@ -61,7 +59,7 @@ function asm_pb_i_address4_test(test_adr_y):
             //data = read_data_bus() // Read address via data bus
             SUBSTATE_TEST_READ_DATA: begin
                Read_Data_buffer[Board_ID_ptr] <= Data_In_Port;
-               wait_multiples <= 1;
+               wait_multiples <= 3; // guess
                substate_pb_test_next <= SUBSTATE_TEST_CTR_OFF;
                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
             end
@@ -70,7 +68,9 @@ function asm_pb_i_address4_test(test_adr_y):
             SUBSTATE_TEST_CTR_OFF: begin
                 CTR_OFF;
                 NO_BOARD_IDLE;
-                substate_pb_test <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
+                wait_multiples <= 3; // guess
+                substate_pb_test_next <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
+                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
             end
 
             SUBSTATE_PB_TEST_INC_CARD_ID_LOOP: begin               

@@ -44,7 +44,7 @@ module state_machines #(
 
 /*********************************************************************************************************/
 parameter _PORT_MUX  = 3'h18; // 0x18 // --011--- /  Same Port address
-
+parameter BOARD_1    = 4'b0001;
 /*********************************************************************************************************/
 
 typedef enum logic [1:0] {
@@ -151,10 +151,17 @@ reg       uart_tx_response_process = 1'b0;
 
 reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
 
+task automatic TEST_ADDR_ON;
+begin
+    WrP <= ENABLE;
+    RdP <= ENABLE;
+end
+endtask
+
 task automatic CTR_OFF;
 begin
-    WrP <= DISABLE; // CTR_OFF in the assembler
-    RdP <= DISABLE; // CTR_OFF in the assembler
+    WrP <= DISABLE;
+    RdP <= DISABLE;
 end
 endtask
 
