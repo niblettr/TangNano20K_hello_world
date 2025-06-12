@@ -20,19 +20,26 @@ RL      A
 RL      A
 RL      A
 MOV     R4,A                  ; R4=8*test_adr_y=00XXX000
+
+//////////////////////////////////////////////////////////////////////////////
 ADD     A,#BOARD_1 + TEST_ADDR_ON
 MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
 NOP                           ; wait for data ready
 NOP
+//////////////////////////////////////////////////////////////////////////////
+
 MOVX    A,@R0                 ; read addresses via data bus
 MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
 XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
 MOV     @R1,A                 ; store Result(0 incidates o.k.)
 INC     R1
+MOV     A,R4                  ; A=8 * test_adr_y
 ADD     A,#BOARD_2 + TEST_ADDR_ON
 MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
 NOP                           ; wait for data ready
 NOP
+
+
 MOVX    A,@R0                 ; read addresses via data bus
 MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
 XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
@@ -43,6 +50,8 @@ ADD     A,#BOARD_3 + TEST_ADDR_ON
 MOV     P1,A                  ; P1=BOARD_1 + (8 * test_adr_y) + test_addr_on
 NOP                           ; wait for data ready
 NOP
+
+
 MOVX    A,@R0                 ; read addresses via data bus
 MOV     P1,#NO_BOARD_IDLE OR 0 OR CTR_OFF; reset Test_RD line
 XRL     A,R3                  ; compare with 'XXX 00001B' with XXX=test_adr_y
@@ -50,6 +59,8 @@ MOV     @R1,A                 ; store Result(0 incidates o.k.)
 INC     R1
 MOV     A,R4                  ; A=8 * test_adr_y
 ADD     A,#BOARD_4 + TEST_ADDR_ON
+
+
 RET
 */
 
@@ -87,12 +98,10 @@ function asm_pb_i_address4_test(test_adr_y):
             SUBSTATE_PB_TEST_IDLE: begin
                 Board_ID_ptr    <= 0;
                 data_dir <= DIR_INPUT;
-                wait_multiples  <= 1;
-                substate_pb_test_next <= SUBSTATE_PB_TEST_ADDR_ON;   
-                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
+                substate_pb_test <= SUBSTATE_PB_TEST_ADDR_ON_LOOP;
                 end
-            
-            SUBSTATE_PB_TEST_ADDR_ON : begin //P1 = board + R4 + TEST_ADDR_ON
+
+            SUBSTATE_PB_TEST_ADDR_ON_LOOP: begin //P1 = board + R4 + TEST_ADDR_ON
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
                 TEST_ADDR_ON;
                 wait_multiples <= 3; // total guess for time being...
@@ -112,9 +121,8 @@ function asm_pb_i_address4_test(test_adr_y):
                    substate_pb_test <= substate_pb_test_next;
                 end
             end
-
-            //data = read_data_bus() // Read address via data bus
-            SUBSTATE_TEST_READ_DATA: begin
+           
+            SUBSTATE_TEST_READ_DATA: begin  //data = read_data_bus() // Read address via data bus
                Read_Data_buffer[Board_ID_ptr] <= Data_In_Port;
                wait_multiples <= 3; // guess
                substate_pb_test_next <= SUBSTATE_TEST_CTR_OFF;
@@ -132,7 +140,7 @@ function asm_pb_i_address4_test(test_adr_y):
             SUBSTATE_PB_TEST_INC_CARD_ID_LOOP: begin               
                if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1  
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
-                  substate_pb_test <= SUBSTATE_PB_TEST_ADDR_ON; // loop back round to do remaining cards
+                  substate_pb_test <= SUBSTATE_PB_TEST_ADDR_ON_LOOP; // loop back round to do remaining cards
                end else begin
                    substate_pb_test <= SUBSTATE_PB_TEST_DONE;
                end

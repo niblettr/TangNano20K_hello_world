@@ -20,10 +20,10 @@ module state_machines #(
 
     // Board Control Outputs
     output      reg [3:0] BOARD_X,
-    output      reg [2:0] AddessPortPin,
+    output      reg [2:0] AddessPort,
     output      reg       TestAddressP,
-    output      reg       RdP,
-    output      reg       WrP,
+    output      reg       PB_RD,
+    output      reg       PB_WR,
     output      reg       LampResetPin,
 
     // Command Parameters
@@ -126,7 +126,7 @@ substate_pb_adc1_t substate_pb_adc1_next         = SUBSTATE_PB_ADC1_IDLE;
 typedef enum logic [3:0] {
     SUBSTATE_PB_TEST_IDLE               = 4'b0000,
     SUBSTATE_PB_TEST_PRE_DELAY,
-    SUBSTATE_PB_TEST_ADDR_ON,
+    SUBSTATE_PB_TEST_ADDR_ON_LOOP,
     SUBSTATE_PB_TEST_WAIT_750N,
     SUBSTATE_TEST_READ_DATA,
     SUBSTATE_TEST_CTR_OFF,
@@ -147,34 +147,34 @@ reg [7:0] Read_Data_buffer [4];
 reg [7:0] uart_tx_response_string [0:20];
 reg [7:0] uart_tx_response_string_len;
 reg       uart_tx_response_process = 1'b0;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
-
-task automatic TEST_ADDR_ON;
+task automatic TEST_ADDR_ON; //#define TEST_ADDR_ON         0x00 // 00------
 begin
-    WrP <= ENABLE;
-    RdP <= ENABLE;
+    PB_WR <= ENABLE;
+    PB_RD <= ENABLE;
 end
 endtask
 
-task automatic CTR_OFF;
+task automatic CTR_OFF; //#define CTR_OFF              0xC0 // 11------
 begin
-    WrP <= DISABLE;
-    RdP <= DISABLE;
+    PB_WR <= DISABLE;
+    PB_RD <= DISABLE;
 end
 endtask
 
-task automatic BOARD_ALL;
+task automatic BOARD_ALL; //#define BOARD_ALL            0x05 // -----101   3->8 mux = >>> 00100000
 begin
     BOARD_X <= 4'hF;
 end
 endtask
 
-task automatic NO_BOARD_IDLE;
+task automatic NO_BOARD_IDLE; //#define NO_BOARD_IDLE        0x07 // -----111   3->8 mux = >>> 10000000
 begin
    BOARD_X <= 4'h0;
 end
 endtask
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 always @(posedge clock) begin
 

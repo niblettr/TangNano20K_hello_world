@@ -1,18 +1,15 @@
 
 module Top_module(
-    // Clock and Reset
-    input        clock,               // System Clock 27MHz (Pin4)
-                                      // PLL_0 clock 40MHz  (Pin10)
-
+    input        clock,               // System Clock 27MHz (Pin4), PLL_0 clock 40MHz  (Pin10)
     // Data Ports
-    inout  [7:0] DataPortPins,        // Data Port Pins (Pin73, Pin74, Pin75, Pin85, Pin77, Pin15, Pin16, Pin27)
-    output reg [2:0] AddessPortPin,   // Address Port (Pin28, Pin25, Pin26)
+    inout      [7:0] DataPort,        // Data Port Pins (D0:Pin73, D1:Pin74, D2:Pin75, D3:Pin85, D4:Pin77, D5:Pin15, D6:Pin16, D7:Pin27)
+    output reg [2:0] AddessPort,      // Address Port (A0:Pin28, A1:Pin25, A2:Pin26)
     output reg [3:0] BOARD_X,         // Board Signals B3, B2, B1, B0 (Pin29, Pin71, Pin72, Pin29)
 
     // Control Signals
-    output reg       TestAddressP,    // Test Address (Pin30)
-    output reg       RdP,             // Read Enable   Pin31)
-    output reg       WrP,             // Write Enable (Pin17)
+    output reg       TestAddress,     // Test Address (Pin30)
+    output reg       PB_RD,           // Read Enable   Pin31)
+    output reg       PB_WR,           // Write Enable (Pin17)
     output reg       LampResetPin,    // Reset Signal (Pin20)
     output reg       OE_Pin,          // Level Shifter Enable (Pin19)
 
@@ -139,9 +136,9 @@ state_machines #(
     .CommandType(CommandType),
     .command_param_data(command_param_data),
     .Data_Out_Port(Data_Out_Port),
-    .RdP(RdP),
-    .WrP(WrP),
-    .AddessPortPin(AddessPortPin),
+    .PB_RD(PB_RD),
+    .PB_WR(PB_WR),
+    .AddessPort(AddessPort),
     .TestAddressP(TestAddressP),
     .LampResetPin(LampResetPin),
     .Data_In_Port(Data_In_Port),
@@ -456,8 +453,8 @@ assign Debug_Pin2 = uart_tx_process;
 
 /********** Continuous Assignment **********/
 // Assign bidirectional port with tristate buffer behavior
-assign DataPortPins = (data_dir) ? Data_Out_Port : 8'bz;  // drive Data_Out_Port if output
-assign Data_In_Port = DataPortPins;                      // read pins as input
+assign DataPort = (data_dir) ? Data_Out_Port : 8'bz;  // drive Data_Out_Port if output
+assign Data_In_Port = DataPort;                      // read pins as input
 
 
 endmodule

@@ -49,15 +49,14 @@ GOTO LOOP4
                 substate_pb_adc4_next = SUBSTATE_PB_ADC4_DONE;
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
                 end
-
-            //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
-            SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin
+            
+            SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
                 BOARD_ALL;
-                AddessPortPin <= _PORT_MUX;
+                AddessPort <= _PORT_MUX;
                 CTR_OFF;
                 wait_multiples <= 1;
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
-                substate_pb_adc4_next <= SUBSTATE_PB_ADC4_DONE; // <<<<<<<<<<<<<<<<<<<<<<
+                substate_pb_adc4_next <= SUBSTATE_PB_ADC4_DONE;
             end
 
             SUBSTATE_PB_ADC4_WAIT_750N: begin

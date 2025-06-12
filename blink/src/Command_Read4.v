@@ -21,8 +21,8 @@ MOVX    @DPTR,A               ; store data to DPR
             
             SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
-                AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
-                RdP <= ENABLE;
+                AddessPort <= command_param_data[0][2:0];  // only use lowest 3 bits
+                PB_RD <= ENABLE;
                 wait_multiples <= 3;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
                 substate_pb_read4_next <= SUBSTATE_PB_READ4_READ_DATA;
@@ -51,7 +51,7 @@ MOVX    @DPTR,A               ; store data to DPR
             end
 
             SUBSTATE_PB_READ4_INC_CARD_ID_LOOP: begin
-               RdP <= DISABLE;        
+               PB_RD <= DISABLE;        
                if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
@@ -67,5 +67,5 @@ MOVX    @DPTR,A               ; store data to DPR
 
         endcase
     end else begin
-        substate_pb_read4_complete <= 1'b0; // Clear the flag when substate_pb_i_read4 is inactive
-    end // end of if (substate_pb_i_read4_active) begin
+        substate_pb_read4_complete <= 1'b0; // Clear the flag when substate_pb_read4_active is inactive
+    end // end of if (substate_pb_read4_active) begin

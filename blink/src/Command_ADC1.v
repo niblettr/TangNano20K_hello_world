@@ -7,17 +7,14 @@
                 substate_pb_adc1_next = SUBSTATE_PB_ADC1_DONE;
                 substate_pb_adc1 <= SUBSTATE_PB_ADC1_WAIT_750N;
                 end
-
-            //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
-            //#define BOARD_ALL            0x05 // -----101
-            SUBSTATE_PB_ADC1_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 5;//BOARD_ALL;
-                AddessPortPin <= _PORT_MUX;
-                WrP <= DISABLE; // CTR_OFF in the assembler
-                RdP <= DISABLE; // CTR_OFF in the assembler
+            
+            SUBSTATE_PB_ADC1_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
+                BOARD_ALL;
+                AddessPort <= _PORT_MUX;
+                CTR_OFF;
                 wait_multiples <= 1;
                 substate_pb_adc1 <= SUBSTATE_PB_ADC1_WAIT_750N;
-                substate_pb_adc1_next <= SUBSTATE_PB_ADC1_DONE; // <<<<<<<<<<<<<<<<<<<<<<
+                substate_pb_adc1_next <= SUBSTATE_PB_ADC1_DONE;
             end
 
             SUBSTATE_PB_ADC1_WAIT_750N: begin
