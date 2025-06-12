@@ -54,13 +54,13 @@ typedef enum logic [1:0] {
 
 typedef enum logic [1:0] {
     DISABLE  = 1,
-    ENABLE   = 0          
+    ENABLE   = 0    // active low
 } en_mode_t;
 
 
     // Define states for the new state machine
 typedef enum logic [3:0] {
-    SUBSTATE_PB_I_WRITE4_IDLE              = 4'b0000,
+    SUBSTATE_PB_I_WRITE4_IDLE           = 4'b0000,
     SUBSTATE_PB_I_WRITE4_PRE_DELAY,
     SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID,
     SUBSTATE_PB_I_WRITE4_WAIT_750N,
@@ -90,7 +90,7 @@ substate_pb_read4_t substate_pb_read4            = SUBSTATE_PB_READ4_IDLE;
 substate_pb_read4_t substate_pb_read4_next       = SUBSTATE_PB_READ4_IDLE;
 
 typedef enum logic [3:0] {
-    SUBSTATE_PB_ADC4_IDLE              = 4'b0000,
+    SUBSTATE_PB_ADC4_IDLE               = 4'b0000,
     SUBSTATE_PB_ADC4_PRE_DELAY,
     SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID,
     SUBSTATE_PB_ADC4_WAIT_750N,
@@ -107,7 +107,7 @@ substate_pb_adc4_t substate_pb_adc4              = SUBSTATE_PB_ADC4_IDLE;
 substate_pb_adc4_t substate_pb_adc4_next         = SUBSTATE_PB_ADC4_IDLE;
 
 typedef enum logic [3:0] {
-    SUBSTATE_PB_ADC1_IDLE              = 4'b0000,
+    SUBSTATE_PB_ADC1_IDLE               = 4'b0000,
     SUBSTATE_PB_ADC1_PRE_DELAY,
     SUBSTATE_PB_ADC1_ASSERT_ADDRESS_ID,
     SUBSTATE_PB_ADC1_WAIT_750N,
@@ -124,7 +124,7 @@ substate_pb_adc1_t substate_pb_adc1              = SUBSTATE_PB_ADC1_IDLE;
 substate_pb_adc1_t substate_pb_adc1_next         = SUBSTATE_PB_ADC1_IDLE;
 
 typedef enum logic [3:0] {
-    SUBSTATE_PB_TEST_IDLE              = 4'b0000,
+    SUBSTATE_PB_TEST_IDLE               = 4'b0000,
     SUBSTATE_PB_TEST_PRE_DELAY,
     SUBSTATE_PB_TEST_ADDR_ON,
     SUBSTATE_PB_TEST_WAIT_750N,

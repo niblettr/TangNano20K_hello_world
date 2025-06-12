@@ -20,10 +20,9 @@ MOVX    @DPTR,A               ; store data to DPR
                 Board_ID_ptr  <= 0; // start from first card
                 data_dir <= DIR_INPUT;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID;
-                end
-
-            //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
-            SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin
+            end
+            
+            SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_4 OR %port OR RD_ON // note its now 1,2,3 and 4 not 4,3,2 and 1
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 RdP <= ENABLE;
@@ -46,8 +45,7 @@ MOVX    @DPTR,A               ; store data to DPR
                     end
                 end
             end
-
-            //MOVX    A,@R0                 ; read data from bus
+            
             SUBSTATE_PB_READ4_READ_DATA: begin
                ResponseBytes[Board_ID_ptr] <= Data_In_Port;
                wait_multiples <= 3;
@@ -55,7 +53,8 @@ MOVX    @DPTR,A               ; store data to DPR
                substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
             end
 
-            SUBSTATE_PB_READ4_INC_CARD_ID_LOOP: begin               
+            SUBSTATE_PB_READ4_INC_CARD_ID_LOOP: begin
+               RdP <= DISABLE;        
                if(Board_ID_ptr < (4 - 1)) begin   // 0->3 is 4 hence the -1
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
