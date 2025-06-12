@@ -12,7 +12,7 @@
             //#define BOARD_ALL            0x05 // -----101
             SUBSTATE_PB_ADC1_ASSERT_ADDRESS_ID: begin
                 BOARD_X <= 5;//BOARD_ALL;
-                AddessPortPin <= PORT_MUX;
+                AddessPortPin <= _PORT_MUX;
                 WrP <= DISABLE; // CTR_OFF in the assembler
                 RdP <= DISABLE; // CTR_OFF in the assembler
                 wait_multiples <= 1;

@@ -67,14 +67,9 @@ function asm_pb_i_address4_test(test_adr_y):
             end
 
             //P1 = NO_BOARD_IDLE | 0 | CTR_OFF // Reset Test_RD line: P1 = NO_BOARD_IDLE | 0 | CTR_OFF
-
-            //#define NO_BOARD_IDLE        0x07 // -----111
-            //#define CTR_OFF              0xC0 // 11------
             SUBSTATE_TEST_CTR_OFF: begin
-                AddessPortPin        <= 0;       // | 0
-                WrP                  <= DISABLE; // CTR_OFF in the assembler
-                RdP                  <= DISABLE; // CTR_OFF in the assembler
-                BOARD_X              <= 0;       // NO_BOARD_IDLE
+                CTR_OFF;
+                NO_BOARD_IDLE;
                 substate_pb_test <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
             end
 

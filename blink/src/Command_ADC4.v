@@ -51,12 +51,10 @@ GOTO LOOP4
                 end
 
             //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
-            //#define BOARD_ALL            0x05 // -----101
             SUBSTATE_PB_ADC4_ASSERT_ADDRESS_ID: begin
-                BOARD_X <= 5;//BOARD_ALL;
-                AddessPortPin <= PORT_MUX;
-                WrP <= DISABLE; // CTR_OFF in the assembler
-                RdP <= DISABLE; // CTR_OFF in the assembler
+                BOARD_ALL;
+                AddessPortPin <= _PORT_MUX;
+                CTR_OFF;
                 wait_multiples <= 1;
                 substate_pb_adc4 <= SUBSTATE_PB_ADC4_WAIT_750N;
                 substate_pb_adc4_next <= SUBSTATE_PB_ADC4_DONE; // <<<<<<<<<<<<<<<<<<<<<<

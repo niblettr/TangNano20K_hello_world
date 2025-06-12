@@ -43,7 +43,7 @@ module state_machines #(
 `include "utils.v"
 
 /*********************************************************************************************************/
-parameter PORT_MUX = 3'h18; // 0x18 // --011--- /  Same Port address
+parameter _PORT_MUX  = 3'h18; // 0x18 // --011--- /  Same Port address
 
 /*********************************************************************************************************/
 
@@ -150,6 +150,25 @@ reg [7:0] uart_tx_response_string_len;
 reg       uart_tx_response_process = 1'b0;
 
 reg [7:0] reset_counter    = 8'b0; // 1-bit counter for reset delay
+
+task automatic CTR_OFF;
+begin
+    WrP <= DISABLE; // CTR_OFF in the assembler
+    RdP <= DISABLE; // CTR_OFF in the assembler
+end
+endtask
+
+task automatic BOARD_ALL;
+begin
+    BOARD_X <= 4'hF;
+end
+endtask
+
+task automatic NO_BOARD_IDLE;
+begin
+   BOARD_X <= 4'h0;
+end
+endtask
 
 always @(posedge clock) begin
 
