@@ -27,28 +27,30 @@ MOVX    @DPTR,A               ; store data to DPR
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8  
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 RdP <= ENABLE;
-                wait_multiples <= 1;
+                wait_multiples <= 3;
                 substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
                 substate_pb_read4_next <= SUBSTATE_PB_READ4_READ_DATA;
             end
 
             SUBSTATE_PB_READ4_WAIT_750N: begin
-                if(wait_multiples) begin
-                    if (substate_wait_counter < 21) begin // Proceed after 21 cycles (~777ns) if clock = 20MHZ, 750ns can be achieved
-                        substate_wait_counter <= substate_wait_counter + 1'b1;
-                    end else begin                        
-                        substate_wait_counter <= 0;
-                        wait_multiples <= wait_multiples - 3'd1;
+               if (substate_wait_counter < 30 -1) begin // @ 40MHZ, 1 cycle takes 25ns, 750ns
+                  substate_wait_counter <= substate_wait_counter + 1'b1;
+               end else begin                   
+                   if(wait_multiples <= 1) begin  // preempt wait_multiples decrementing to zero
+                       substate_wait_counter <= 1;
+                       wait_multiples <= 0;
+                       substate_pb_read4 <= substate_pb_read4_next;
+                    end else begin
+                       wait_multiples <= wait_multiples - 5'd1;
+                       substate_wait_counter <= 0;
                     end
-                end else begin
-                   substate_pb_read4 <= substate_pb_read4_next;
                 end
             end
 
             //MOVX    A,@R0                 ; read data from bus
             SUBSTATE_PB_READ4_READ_DATA: begin
-               Read_Data_buffer[Board_ID_ptr] <= Data_In_Port;
-               wait_multiples <= 1;
+               ResponseBytes[Board_ID_ptr] <= Data_In_Port;
+               wait_multiples <= 3;
                substate_pb_read4_next <= SUBSTATE_PB_READ4_INC_CARD_ID_LOOP;
                substate_pb_read4 <= SUBSTATE_PB_READ4_WAIT_750N;
             end
@@ -58,14 +60,8 @@ MOVX    @DPTR,A               ; store data to DPR
                   Board_ID_ptr <= Board_ID_ptr + 3'd1; 
                   substate_pb_read4 <= SUBSTATE_PB_READ4_ASSERT_ADDRESS_ID; // loop back round to do remaining cards
                end else begin
-                   substate_pb_read4 <= SUBSTATE_PB_READ4_RESPOND;
+                   substate_pb_read4 <= SUBSTATE_PB_READ4_DONE;
                end
-            end
-
-            SUBSTATE_PB_READ4_RESPOND: begin
-                ResponseBytes[0:3] <= Read_Data_buffer[0:3];
-                ResponseByteCount  <= 4;
-                substate_pb_read4   <= SUBSTATE_PB_READ4_DONE;
             end
 
             SUBSTATE_PB_READ4_DONE: begin

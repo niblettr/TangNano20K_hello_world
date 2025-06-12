@@ -84,7 +84,6 @@ typedef enum logic [3:0] {
     SUBSTATE_PB_READ4_RELEASE_WR_ENABLE,
     SUBSTATE_PB_READ4_RELEASE_DATA,
     SUBSTATE_PB_READ4_INC_CARD_ID_LOOP,
-    SUBSTATE_PB_READ4_RESPOND,
     SUBSTATE_PB_READ4_DONE              
 } substate_pb_read4_t;
 substate_pb_read4_t substate_pb_read4            = SUBSTATE_PB_READ4_IDLE;
