@@ -12,10 +12,6 @@ SETB    PB_WR                 ; WR-line inactive
 SETB    DIR_OUT               ; output driver off
 [loop 3 more times to do remaining cards (4 in total)]
 */
-
-
-
-
     if (substate_pb_i_write4_active) begin
         case (substate_pb_i_write4)
             SUBSTATE_PB_I_WRITE4_IDLE: begin
@@ -30,9 +26,8 @@ SETB    DIR_OUT               ; output driver off
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID;
 
             end
-
-            //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
-            SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin
+            
+            SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
                 AddessPortPin <= command_param_data[0][2:0];  // only use lowest 3 bits
                 CTR_OFF;
@@ -78,7 +73,7 @@ SETB    DIR_OUT               ; output driver off
             end
 
             SUBSTATE_PB_I_WRITE4_RELEASE_DATA: begin
-                data_dir        <= DIR_INPUT;  // back to input mode
+                data_dir        <= DIR_INPUT;
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_INC_CARD_ID_LOOP;

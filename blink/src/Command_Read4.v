@@ -11,9 +11,6 @@ SETB    PB_RD                 ; read inactive
 MOVX    @DPTR,A               ; store data to DPR
 [loop 3 more times to do remaining cards (4 in total)]
 */
-
-
-    //M_C pb_read4
     if (substate_pb_read4_active) begin
         case (substate_pb_read4)
             SUBSTATE_PB_READ4_IDLE: begin
