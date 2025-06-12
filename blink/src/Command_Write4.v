@@ -56,8 +56,6 @@ SETB    DIR_OUT               ; output driver off
                 end
             end
  
-            //MOVX    @R0,A                 ; load data to output latch
-            //CLR     DIR_OUT               ; output driver on
             SUBSTATE_PB_I_WRITE4_ASSERT_DATA: begin
                 Data_Out_Port <= command_param_data[Board_ID_ptr +1]; // BYTE 0 = ADDRESS HENCE THE +1
                 wait_multiples <= 1;
@@ -65,9 +63,8 @@ SETB    DIR_OUT               ; output driver off
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE;
             end
 
-            //CLR     PB_WR                 ; activate WR-line
             SUBSTATE_PB_I_WRITE4_ASSERT_WR_ENABLE: begin
-                WrP <= ENABLE; // active low
+                WrP <= ENABLE;
                 wait_multiples <= 2;      // 1=776ns, 2=1.448us, 3=2.152us, 4=2.848
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_WR;
@@ -80,7 +77,6 @@ SETB    DIR_OUT               ; output driver off
                 substate_pb_i_write4_next <= SUBSTATE_PB_I_WRITE4_RELEASE_DATA;
             end
 
-            //SETB    DIR_OUT               ; output driver off
             SUBSTATE_PB_I_WRITE4_RELEASE_DATA: begin
                 data_dir        <= DIR_INPUT;  // back to input mode
                 wait_multiples <= 1;
