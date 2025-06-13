@@ -130,7 +130,7 @@ function asm_pb_i_address4_test(test_adr_y):
             
             SUBSTATE_TEST_CTR_OFF: begin //P1 = NO_BOARD_IDLE | 0 | CTR_OFF 
                 CTR_OFF;
-                AddessPort <= 3'd0; // niblett not 100% sure............
+                AddessPort <= 3'd0; // | 0 (don't care)
                 NO_BOARD_IDLE;
                 wait_multiples <= 3; // guess
                 substate_pb_test_next <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;
