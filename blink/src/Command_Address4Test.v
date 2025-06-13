@@ -92,7 +92,6 @@ function asm_pb_i_address4_test(test_adr_y):
 
 // >>>>>>>>>>>>. remeber, test_adr_y = command_param_data[0]
 
-// P1 = Port1 :- 
     if (substate_pb_test_active) begin
         case (substate_pb_test)
             SUBSTATE_PB_TEST_IDLE: begin
@@ -129,8 +128,9 @@ function asm_pb_i_address4_test(test_adr_y):
                substate_pb_test <= SUBSTATE_PB_TEST_WAIT_750N;
             end
             
-            SUBSTATE_TEST_CTR_OFF: begin //P1 = NO_BOARD_IDLE | 0 | CTR_OFF // Reset Test_RD line: P1 = NO_BOARD_IDLE | 0 | CTR_OFF
+            SUBSTATE_TEST_CTR_OFF: begin //P1 = NO_BOARD_IDLE | 0 | CTR_OFF 
                 CTR_OFF;
+                AddessPort <= 3'd0; // niblett not 100% sure............
                 NO_BOARD_IDLE;
                 wait_multiples <= 3; // guess
                 substate_pb_test_next <= SUBSTATE_PB_TEST_INC_CARD_ID_LOOP;

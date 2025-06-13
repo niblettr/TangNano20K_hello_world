@@ -10,7 +10,7 @@
             
             SUBSTATE_PB_ADC1_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_ALL OR PORT_MUX OR CTR_OFF
                 BOARD_ALL;
-                AddessPort <= _PORT_MUX;
+                PORT_MUX;
                 CTR_OFF;
                 wait_multiples <= 1;
                 substate_pb_adc1 <= SUBSTATE_PB_ADC1_WAIT_750N;

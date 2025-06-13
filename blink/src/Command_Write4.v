@@ -29,7 +29,7 @@ SETB    DIR_OUT               ; output driver off
             
             SUBSTATE_PB_I_WRITE4_ASSERT_ADDRESS_ID: begin //MOV     P1,#BOARD_4 OR %port OR CTR_OFF // note its now 1,2,3 and 4 not 4,3,2 and 1
                 BOARD_X <= BOARD_1 << Board_ID_ptr; //BOARD_X = 1, 2, 4 or 8
-                AddessPort <= command_param_data[0][2:0];  // only use lowest 3 bits
+                AddessPort <= command_param_data[0][2:0];  // only use lowest 3 bits (0=RED, 1,AMB, 2=GRE)
                 CTR_OFF;
                 wait_multiples <= 1;
                 substate_pb_i_write4 <= SUBSTATE_PB_I_WRITE4_WAIT_750N;

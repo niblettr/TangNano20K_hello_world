@@ -43,7 +43,7 @@ module state_machines #(
 `include "utils.v"
 
 /*********************************************************************************************************/
-parameter _PORT_MUX  = 3'h18; // 0x18 // --011--- /  Same Port address
+
 parameter BOARD_1    = 4'b0001;
 /*********************************************************************************************************/
 
@@ -172,6 +172,12 @@ endtask
 task automatic NO_BOARD_IDLE; //#define NO_BOARD_IDLE        0x07 // -----111   3->8 mux = >>> 10000000
 begin
    BOARD_X <= 4'h0;
+end
+endtask
+
+task automatic PORT_MUX; //#define PORT_MUX             0x18 // --011---
+begin
+   AddessPort <= 1'b011;
 end
 endtask
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
